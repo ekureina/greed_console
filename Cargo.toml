@@ -1,0 +1,16 @@
+[package]
+name = "greed_console"
+version = "0.1.0"
+edition = "2021"
+authors = ["Claire Moore <kurennon@gmail.com>"]
+rust-version = "1.65"
+description = "A small GUI App to help with playing Greed"
+license = "GPL-3.0-or-later"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+egui = "0.19.0"
+log = "0.4.17"
+env_logger = "0.9.3"
