@@ -12,5 +12,6 @@ publish = false
 
 [dependencies]
 egui = "0.19.0"
+eframe = "0.19.0"
 log = "0.4.17"
 env_logger = "0.9.3"

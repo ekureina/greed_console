@@ -23,7 +23,7 @@ impl GameState {
     /**
      * Resets the GameState to setup for the next turn
      */
-    fn next_turn(&mut self) {
+    pub fn next_turn(&mut self) {
         self.turn_num += 1;
         self.primary_usable = true;
         self.secondary_usable = true;
@@ -33,7 +33,7 @@ impl GameState {
     /**
      * Resets the GameState for the next battle
      */
-    fn next_battle(&mut self) {
+    pub fn next_battle(&mut self) {
         self.next_turn();
         self.inspiration_usable = true;
         self.turn_num = 1;
@@ -42,63 +42,63 @@ impl GameState {
     /**
      * Set GameState such that a primary action was used
      */
-    fn use_primary(&mut self) {
+    pub fn use_primary(&mut self) {
         self.primary_usable = false;
     }
 
     /**
      * Set GameState such that a secondary action was used
      */
-    fn use_secondary(&mut self) {
+    pub fn use_secondary(&mut self) {
         self.secondary_usable = false;
     }
 
     /**
      * Set GameState such that a special action was used
      */
-    fn use_special(&mut self) {
+    pub fn use_special(&mut self) {
         self.special_usable = false;
     }
 
     /**
      * Set GameState such that inspiration was used
      */
-    fn use_inspiration(&mut self) {
+    pub fn use_inspiration(&mut self) {
         self.inspiration_usable = false;
     }
 
     /**
      * Get the current battle's turn number
      */
-    fn get_turn_num(&self) -> u8 {
+    pub fn get_turn_num(&self) -> u8 {
         self.turn_num
     }
 
     /**
      * Query if it is possible to use a primary action
      */
-    fn get_primary_usable(&self) -> bool {
+    pub fn get_primary_usable(&self) -> bool {
         self.primary_usable
     }
 
     /**
      * Query if it is possible to use a secondary action
      */
-    fn get_secondary_usable(&self) -> bool {
+    pub fn get_secondary_usable(&self) -> bool {
         self.secondary_usable
     }
 
     /**
      * Query if it is possible to use a special action
      */
-    fn get_special_usable(&self) -> bool {
+    pub fn get_special_usable(&self) -> bool {
         self.special_usable
     }
 
     /**
      * Query if it is possible to use inspiration
      */
-    fn get_inspiration_usable(&self) -> bool {
+    pub fn get_inspiration_usable(&self) -> bool {
         self.inspiration_usable
     }
 }
