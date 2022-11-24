@@ -1,8 +1,8 @@
 #[derive(Debug)]
 pub struct GameState {
     turn_num: u8,
-    primary_usable: bool,
-    secondary_usable: bool,
+    primary_actions: u8,
+    secondary_actions: u8,
     special_usable: bool,
     inspiration_usable: bool
 }
@@ -11,8 +11,8 @@ impl Default for GameState {
     fn default() -> Self {
         GameState {
             turn_num: 1,
-            primary_usable: true,
-            secondary_usable: true,
+            primary_actions: 1,
+            secondary_actions: 1,
             special_usable: true,
             inspiration_usable: true
         }
@@ -25,8 +25,8 @@ impl GameState {
      */
     pub fn next_turn(&mut self) {
         self.turn_num += 1;
-        self.primary_usable = true;
-        self.secondary_usable = true;
+        self.primary_actions = 1;
+        self.secondary_actions = 1;
         self.special_usable = true;
     }
 
@@ -43,14 +43,14 @@ impl GameState {
      * Set GameState such that a primary action was used
      */
     pub fn use_primary(&mut self) {
-        self.primary_usable = false;
+        self.primary_actions -= 1;
     }
 
     /**
      * Set GameState such that a secondary action was used
      */
     pub fn use_secondary(&mut self) {
-        self.secondary_usable = false;
+        self.secondary_actions -= 1;
     }
 
     /**
@@ -68,6 +68,20 @@ impl GameState {
     }
 
     /**
+     * Allow extra primary action to be used this turn
+     */
+    pub fn extra_primary(&mut self) {
+        self.primary_actions += 1;
+    }
+
+    /**
+     * Allow extra secondary action to be used this turn
+     */
+    pub fn extra_secondary(&mut self) {
+        self.secondary_actions += 1;
+    }
+
+    /**
      * Get the current battle's turn number
      */
     pub fn get_turn_num(&self) -> u8 {
@@ -78,14 +92,14 @@ impl GameState {
      * Query if it is possible to use a primary action
      */
     pub fn get_primary_usable(&self) -> bool {
-        self.primary_usable
+        self.primary_actions > 0
     }
 
     /**
      * Query if it is possible to use a secondary action
      */
     pub fn get_secondary_usable(&self) -> bool {
-        self.secondary_usable
+        self.secondary_actions > 0
     }
 
     /**
@@ -193,6 +207,28 @@ mod tests {
         assert_eq!(state.get_secondary_usable(), true);
         assert_eq!(state.get_special_usable(), true);
         assert_eq!(state.get_inspiration_usable(), true);
+    }
+
+    #[test]
+    fn test_primary_extras() {
+        let mut state = GameState::default();
+
+        state.use_primary();
+        assert_eq!(state.get_primary_usable(), false);
+
+        state.extra_primary();
+        assert_eq!(state.get_primary_usable(), true);
+    }
+
+    #[test]
+    fn test_secondary_extras() {
+        let mut state = GameState::default();
+
+        state.use_secondary();
+        assert_eq!(state.get_secondary_usable(), false);
+
+        state.extra_secondary();
+        assert_eq!(state.get_secondary_usable(), true);
     }
 }
 

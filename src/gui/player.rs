@@ -15,16 +15,35 @@ impl PlayerGuiGreedApp {
 
 impl eframe::App for PlayerGuiGreedApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("Turn: ".to_owned() + &self.game_state.get_turn_num().to_string());
-            if ui.button("Next Turn").clicked() {
-                self.game_state.next_turn();
-            }
-
+        egui::SidePanel::left("globals").resizable(false).show(ctx, |ui| {
             if ui.button("Next Battle").clicked() {
                 self.game_state.next_battle();
             }
 
+            ui.label("Turn: ".to_owned() + &self.game_state.get_turn_num().to_string());
+            if ui.button("Next Turn").clicked() {
+                self.game_state.next_turn();
+            }
+        });
+
+        egui::SidePanel::right("extras").resizable(false).show(ctx, |ui| {
+            if ui.add_enabled(self.game_state.get_special_usable(), egui::Button::new("Action Surge")).clicked() {
+                self.game_state.extra_primary();
+                self.game_state.extra_primary();
+                self.game_state.use_special();
+            }
+
+            if ui.add_enabled(self.game_state.get_primary_usable(), egui::Button::new("Execute")).clicked() {
+                self.game_state.extra_primary();
+                self.game_state.use_primary();
+            }
+
+            if ui.button("Rally Wink Targeted").clicked() {
+                self.game_state.extra_secondary();
+            }
+        });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
             if ui.add_enabled(self.game_state.get_primary_usable(), egui::Button::new("Use Primary")).clicked() {
                 self.game_state.use_primary();
             }
