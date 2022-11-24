@@ -73,6 +73,10 @@ impl eframe::App for PlayerGuiGreedApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.group(|ui| {
+                ui.label(format!(
+                    "Primary Actions Remaining: {}",
+                    self.game_state.get_primary_actions()
+                ));
                 if ui
                     .add_enabled(
                         self.game_state.get_primary_usable(),
@@ -85,6 +89,10 @@ impl eframe::App for PlayerGuiGreedApp {
             });
 
             ui.group(|ui| {
+                ui.label(format!(
+                    "Secondary Actions Remaining: {}",
+                    self.game_state.get_secondary_actions()
+                ));
                 if ui
                     .add_enabled(
                         self.game_state.get_secondary_usable(),

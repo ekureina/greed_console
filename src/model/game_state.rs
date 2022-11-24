@@ -96,6 +96,20 @@ impl GameState {
     }
 
     /**
+     * Query the number of primary actions available
+     */
+    pub fn get_primary_actions(&self) -> u8 {
+        self.primary_actions
+    }
+
+    /**
+     * Query the number of primary actions available
+     */
+    pub fn get_secondary_actions(&self) -> u8 {
+        self.secondary_actions
+    }
+
+    /**
      * Query if it is possible to use a secondary action
      */
     pub fn get_secondary_usable(&self) -> bool {
@@ -126,31 +140,31 @@ mod tests {
         let state = GameState::default();
 
         assert_eq!(state.get_turn_num(), 1);
-        assert_eq!(state.get_primary_usable(), true);
-        assert_eq!(state.get_secondary_usable(), true);
-        assert_eq!(state.get_special_usable(), true);
-        assert_eq!(state.get_inspiration_usable(), true);
+        assert!(state.get_primary_usable());
+        assert!(state.get_secondary_usable());
+        assert!(state.get_special_usable());
+        assert!(state.get_inspiration_usable());
     }
 
     #[test]
     fn test_exclusion() {
         let mut state = GameState::default();
 
-        assert_eq!(state.get_primary_usable(), true);
+        assert!(state.get_primary_usable());
         state.use_primary();
-        assert_eq!(state.get_primary_usable(), false);
+        assert!(!state.get_primary_usable());
 
-        assert_eq!(state.get_secondary_usable(), true);
+        assert!(state.get_secondary_usable());
         state.use_secondary();
-        assert_eq!(state.get_secondary_usable(), false);
+        assert!(!state.get_secondary_usable());
 
-        assert_eq!(state.get_special_usable(), true);
+        assert!(state.get_special_usable());
         state.use_special();
-        assert_eq!(state.get_special_usable(), false);
+        assert!(!state.get_special_usable());
 
-        assert_eq!(state.get_inspiration_usable(), true);
+        assert!(state.get_inspiration_usable());
         state.use_inspiration();
-        assert_eq!(state.get_inspiration_usable(), false);
+        assert!(!state.get_inspiration_usable());
     }
 
     #[test]
@@ -162,19 +176,19 @@ mod tests {
         state.use_special();
         state.use_inspiration();
 
-        assert_eq!(state.get_primary_usable(), false);
-        assert_eq!(state.get_secondary_usable(), false);
-        assert_eq!(state.get_special_usable(), false);
-        assert_eq!(state.get_inspiration_usable(), false);
+        assert!(!state.get_primary_usable());
+        assert!(!state.get_secondary_usable());
+        assert!(!state.get_special_usable());
+        assert!(!state.get_inspiration_usable());
         assert_eq!(state.get_turn_num(), 1);
 
         state.next_turn();
 
         assert_eq!(state.get_turn_num(), 2);
-        assert_eq!(state.get_primary_usable(), true);
-        assert_eq!(state.get_secondary_usable(), true);
-        assert_eq!(state.get_special_usable(), true);
-        assert_eq!(state.get_inspiration_usable(), false);
+        assert!(state.get_primary_usable());
+        assert!(state.get_secondary_usable());
+        assert!(state.get_special_usable());
+        assert!(!state.get_inspiration_usable());
     }
 
     #[test]
@@ -186,27 +200,27 @@ mod tests {
         state.use_special();
         state.use_inspiration();
 
-        assert_eq!(state.get_primary_usable(), false);
-        assert_eq!(state.get_secondary_usable(), false);
-        assert_eq!(state.get_special_usable(), false);
-        assert_eq!(state.get_inspiration_usable(), false);
+        assert!(!state.get_primary_usable());
+        assert!(!state.get_secondary_usable());
+        assert!(!state.get_special_usable());
+        assert!(!state.get_inspiration_usable());
         assert_eq!(state.get_turn_num(), 1);
 
         state.next_turn();
 
         assert_eq!(state.get_turn_num(), 2);
-        assert_eq!(state.get_primary_usable(), true);
-        assert_eq!(state.get_secondary_usable(), true);
-        assert_eq!(state.get_special_usable(), true);
-        assert_eq!(state.get_inspiration_usable(), false);
+        assert!(state.get_primary_usable());
+        assert!(state.get_secondary_usable());
+        assert!(state.get_special_usable());
+        assert!(!state.get_inspiration_usable());
 
         state.next_battle();
 
         assert_eq!(state.get_turn_num(), 1);
-        assert_eq!(state.get_primary_usable(), true);
-        assert_eq!(state.get_secondary_usable(), true);
-        assert_eq!(state.get_special_usable(), true);
-        assert_eq!(state.get_inspiration_usable(), true);
+        assert!(state.get_primary_usable());
+        assert!(state.get_secondary_usable());
+        assert!(state.get_special_usable());
+        assert!(state.get_inspiration_usable());
     }
 
     #[test]
@@ -214,10 +228,26 @@ mod tests {
         let mut state = GameState::default();
 
         state.use_primary();
-        assert_eq!(state.get_primary_usable(), false);
+        assert!(!state.get_primary_usable());
 
         state.extra_primary();
-        assert_eq!(state.get_primary_usable(), true);
+        assert!(state.get_primary_usable());
+    }
+
+    #[test]
+    fn test_primary_multiple_extras() {
+        let mut state = GameState::default();
+
+        state.extra_primary();
+        assert_eq!(state.get_primary_actions(), 2);
+    }
+
+    #[test]
+    fn test_secondary_multiple_extras() {
+        let mut state = GameState::default();
+
+        state.extra_secondary();
+        assert_eq!(state.get_secondary_actions(), 2);
     }
 
     #[test]
@@ -225,9 +255,9 @@ mod tests {
         let mut state = GameState::default();
 
         state.use_secondary();
-        assert_eq!(state.get_secondary_usable(), false);
+        assert!(!state.get_secondary_usable());
 
         state.extra_secondary();
-        assert_eq!(state.get_secondary_usable(), true);
+        assert!(state.get_secondary_usable());
     }
 }
