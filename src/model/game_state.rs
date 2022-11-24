@@ -133,7 +133,7 @@ impl GameState {
 
 #[cfg(test)]
 mod tests {
-    use crate::model::game_state::GameState;
+    use super::*;
 
     #[test]
     fn test_default() {
