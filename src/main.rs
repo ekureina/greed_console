@@ -14,6 +14,9 @@ fn main() {
 
     let native_options = NativeOptions::default();
 
-    eframe::run_native("Greed Console", native_options, Box::new(|cc| Box::new(PlayerGuiGreedApp::new(cc))));
+    eframe::run_native(
+        "Greed Console",
+        native_options,
+        Box::new(|cc| Box::new(PlayerGuiGreedApp::new(cc))),
+    );
 }
-

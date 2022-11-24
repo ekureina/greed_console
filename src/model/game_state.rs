@@ -4,7 +4,7 @@ pub struct GameState {
     primary_actions: u8,
     secondary_actions: u8,
     special_usable: bool,
-    inspiration_usable: bool
+    inspiration_usable: bool,
 }
 
 impl Default for GameState {
@@ -14,7 +14,7 @@ impl Default for GameState {
             primary_actions: 1,
             secondary_actions: 1,
             special_usable: true,
-            inspiration_usable: true
+            inspiration_usable: true,
         }
     }
 }
@@ -231,4 +231,3 @@ mod tests {
         assert_eq!(state.get_secondary_usable(), true);
     }
 }
-
