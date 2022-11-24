@@ -1,9 +1,12 @@
+use super::actions::SpecialAction;
+
 #[derive(Debug)]
 pub struct GameState {
     turn_num: u8,
     primary_actions: u8,
     secondary_actions: u8,
     special_usable: bool,
+    special_actions: Vec<SpecialAction>,
     inspiration_usable: bool,
 }
 
@@ -14,6 +17,7 @@ impl Default for GameState {
             primary_actions: 1,
             secondary_actions: 1,
             special_usable: true,
+            special_actions: vec![],
             inspiration_usable: true,
         }
     }
@@ -37,6 +41,9 @@ impl GameState {
         self.next_turn();
         self.inspiration_usable = true;
         self.turn_num = 1;
+        for action in &mut self.special_actions.iter_mut() {
+            action.refresh();
+        }
     }
 
     /**
@@ -82,6 +89,13 @@ impl GameState {
     }
 
     /**
+     * Register a new special action
+     */
+    pub fn new_special<S: Into<String>>(&mut self, name: S) {
+        self.special_actions.push(SpecialAction::new(name));
+    }
+
+    /**
      * Get the current battle's turn number
      */
     pub fn get_turn_num(&self) -> u8 {
@@ -120,7 +134,14 @@ impl GameState {
      * Query if it is possible to use a special action
      */
     pub fn get_special_usable(&self) -> bool {
-        self.special_usable
+        self.special_usable && self.special_actions.iter().any(SpecialAction::is_usable)
+    }
+
+    /**
+     * Get the Vec of Special Actions as a reference
+     */
+    pub fn get_special_actions(&self) -> &Vec<SpecialAction> {
+        &self.special_actions
     }
 
     /**
@@ -142,13 +163,14 @@ mod tests {
         assert_eq!(state.get_turn_num(), 1);
         assert!(state.get_primary_usable());
         assert!(state.get_secondary_usable());
-        assert!(state.get_special_usable());
+        assert!(!state.get_special_usable());
         assert!(state.get_inspiration_usable());
     }
 
     #[test]
     fn test_exclusion() {
         let mut state = GameState::default();
+        state.new_special("Test");
 
         assert!(state.get_primary_usable());
         state.use_primary();
@@ -170,6 +192,7 @@ mod tests {
     #[test]
     fn test_next_turn() {
         let mut state = GameState::default();
+        state.new_special("Test");
 
         state.use_primary();
         state.use_secondary();
@@ -194,6 +217,7 @@ mod tests {
     #[test]
     fn test_next_battle() {
         let mut state = GameState::default();
+        state.new_special("Test");
 
         state.use_primary();
         state.use_secondary();
@@ -259,5 +283,16 @@ mod tests {
 
         state.extra_secondary();
         assert!(state.get_secondary_usable());
+    }
+
+    #[test]
+    fn specials() {
+        let mut state = GameState::default();
+
+        assert_eq!(state.get_special_actions().len(), 0);
+
+        state.new_special("Test");
+
+        assert_eq!(state.get_special_actions().len(), 1);
     }
 }

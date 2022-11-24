@@ -1,3 +1,4 @@
+use crate::model::actions::SpecialAction;
 use crate::model::game_state::GameState;
 
 use eframe::egui;
@@ -11,12 +12,8 @@ impl GuiGreedApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self::default()
     }
-}
 
-impl eframe::App for GuiGreedApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        frame.set_window_title("Greed Console");
-
+    fn globals_panel(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("globals")
             .resizable(false)
             .show(ctx, |ui| {
@@ -35,7 +32,9 @@ impl eframe::App for GuiGreedApp {
                     }
                 });
             });
+    }
 
+    fn extras_panel(&mut self, ctx: &egui::Context) {
         egui::SidePanel::right("extras")
             .resizable(false)
             .show(ctx, |ui| {
@@ -70,7 +69,9 @@ impl eframe::App for GuiGreedApp {
                     self.game_state.extra_secondary();
                 }
             });
+    }
 
+    fn main_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.group(|ui| {
                 ui.label(format!(
@@ -124,5 +125,17 @@ impl eframe::App for GuiGreedApp {
                 self.game_state.use_inspiration();
             }
         });
+    }
+}
+
+impl eframe::App for GuiGreedApp {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        frame.set_window_title("Greed Console");
+
+        self.globals_panel(ctx);
+
+        self.extras_panel(ctx);
+
+        self.main_panel(ctx);
     }
 }

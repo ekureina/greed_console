@@ -1,8 +1,8 @@
 /**
  * Struct defining a Greed Special Action
  */
-#[derive(Debug)]
-struct SpecialAction {
+#[derive(Debug, Clone)]
+pub struct SpecialAction {
     name: String,
     usable: bool,
 }
