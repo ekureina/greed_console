@@ -3,17 +3,17 @@ use crate::model::game_state::GameState;
 use eframe::egui;
 
 #[derive(Default)]
-pub struct PlayerGuiGreedApp {
+pub struct GuiGreedApp {
     game_state: GameState,
 }
 
-impl PlayerGuiGreedApp {
+impl GuiGreedApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self::default()
     }
 }
 
-impl eframe::App for PlayerGuiGreedApp {
+impl eframe::App for GuiGreedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         frame.set_window_title("Greed Console");
 

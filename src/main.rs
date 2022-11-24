@@ -2,7 +2,7 @@
 #![warn(deprecated_in_future)]
 #![warn(clippy::all, clippy::pedantic)]
 
-use crate::gui::player::PlayerGuiGreedApp;
+use crate::gui::player;
 
 use eframe::NativeOptions;
 
@@ -17,6 +17,6 @@ fn main() {
     eframe::run_native(
         "Greed Console",
         native_options,
-        Box::new(|cc| Box::new(PlayerGuiGreedApp::new(cc))),
+        Box::new(|cc| Box::new(player::GuiGreedApp::new(cc))),
     );
 }
