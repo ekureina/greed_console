@@ -1,3 +1,5 @@
+use log::info;
+
 use super::actions::SpecialAction;
 
 #[derive(Debug)]
@@ -63,7 +65,14 @@ impl GameState {
     /**
      * Set GameState such that a special action was used
      */
-    pub fn use_special(&mut self) {
+    pub fn use_special<S: Into<String> + Clone>(&mut self, name: S) {
+        for action in &mut self.special_actions.iter_mut() {
+            if action.is_named(name.clone()) {
+                action.use_action();
+                info!("Used action {}", name.into());
+                break;
+            }
+        }
         self.special_usable = false;
     }
 
@@ -133,8 +142,28 @@ impl GameState {
     /**
      * Query if it is possible to use a special action
      */
-    pub fn get_special_usable(&self) -> bool {
-        self.special_usable && self.special_actions.iter().any(SpecialAction::is_usable)
+    pub fn get_any_special_usable(&self) -> bool {
+        self.special_usable
+            && !self.special_actions.is_empty()
+            && self.special_actions.iter().any(SpecialAction::is_usable)
+    }
+
+    /**
+     * Query if the given special action is a contained special action
+     */
+    pub fn get_special_action_exists<S: Into<String> + Clone>(&self, name: S) -> bool {
+        self.special_actions
+            .iter()
+            .any(|action| action.is_named(name.clone()))
+    }
+
+    /**
+     * Query if the given special action is usable
+     */
+    pub fn get_special_action_usable<S: Into<String> + Clone>(&self, name: S) -> bool {
+        self.special_actions
+            .iter()
+            .any(|action| action.is_named(name.clone()) && action.is_usable())
     }
 
     /**
@@ -163,7 +192,7 @@ mod tests {
         assert_eq!(state.get_turn_num(), 1);
         assert!(state.get_primary_usable());
         assert!(state.get_secondary_usable());
-        assert!(!state.get_special_usable());
+        assert!(!state.get_any_special_usable());
         assert!(state.get_inspiration_usable());
     }
 
@@ -180,9 +209,9 @@ mod tests {
         state.use_secondary();
         assert!(!state.get_secondary_usable());
 
-        assert!(state.get_special_usable());
-        state.use_special();
-        assert!(!state.get_special_usable());
+        assert!(state.get_any_special_usable());
+        state.use_special("Test");
+        assert!(!state.get_any_special_usable());
 
         assert!(state.get_inspiration_usable());
         state.use_inspiration();
@@ -196,12 +225,12 @@ mod tests {
 
         state.use_primary();
         state.use_secondary();
-        state.use_special();
+        state.use_special("Test");
         state.use_inspiration();
 
         assert!(!state.get_primary_usable());
         assert!(!state.get_secondary_usable());
-        assert!(!state.get_special_usable());
+        assert!(!state.get_any_special_usable());
         assert!(!state.get_inspiration_usable());
         assert_eq!(state.get_turn_num(), 1);
 
@@ -210,8 +239,11 @@ mod tests {
         assert_eq!(state.get_turn_num(), 2);
         assert!(state.get_primary_usable());
         assert!(state.get_secondary_usable());
-        assert!(state.get_special_usable());
+        assert!(!state.get_any_special_usable());
         assert!(!state.get_inspiration_usable());
+
+        state.new_special("Test2");
+        assert!(state.get_any_special_usable());
     }
 
     #[test]
@@ -221,12 +253,12 @@ mod tests {
 
         state.use_primary();
         state.use_secondary();
-        state.use_special();
+        state.use_special("Test");
         state.use_inspiration();
 
         assert!(!state.get_primary_usable());
         assert!(!state.get_secondary_usable());
-        assert!(!state.get_special_usable());
+        assert!(!state.get_any_special_usable());
         assert!(!state.get_inspiration_usable());
         assert_eq!(state.get_turn_num(), 1);
 
@@ -235,15 +267,18 @@ mod tests {
         assert_eq!(state.get_turn_num(), 2);
         assert!(state.get_primary_usable());
         assert!(state.get_secondary_usable());
-        assert!(state.get_special_usable());
+        assert!(!state.get_any_special_usable());
         assert!(!state.get_inspiration_usable());
+
+        state.new_special("Test2");
+        assert!(state.get_any_special_usable());
 
         state.next_battle();
 
         assert_eq!(state.get_turn_num(), 1);
         assert!(state.get_primary_usable());
         assert!(state.get_secondary_usable());
-        assert!(state.get_special_usable());
+        assert!(state.get_any_special_usable());
         assert!(state.get_inspiration_usable());
     }
 
@@ -290,9 +325,42 @@ mod tests {
         let mut state = GameState::default();
 
         assert_eq!(state.get_special_actions().len(), 0);
+        assert!(!state.get_any_special_usable());
 
         state.new_special("Test");
 
         assert_eq!(state.get_special_actions().len(), 1);
+        assert!(state.get_special_action_usable("Test"));
+        assert!(state.get_any_special_usable());
+
+        state.use_special("Test");
+
+        assert_eq!(state.get_special_actions().len(), 1);
+        assert!(!state.get_special_action_usable("Test"));
+        assert!(!state.get_any_special_usable());
+
+        state.next_turn();
+
+        assert_eq!(state.get_special_actions().len(), 1);
+        assert!(!state.get_special_action_usable("Test"));
+        assert!(!state.get_any_special_usable());
+
+        state.new_special("Test2");
+
+        assert_eq!(state.get_special_actions().len(), 2);
+        assert!(state.get_special_action_usable("Test2"));
+        assert!(state.get_any_special_usable());
+
+        state.use_special("Test2");
+
+        assert_eq!(state.get_special_actions().len(), 2);
+        assert!(!state.get_special_action_usable("Test2"));
+        assert!(!state.get_any_special_usable());
+
+        state.next_turn();
+
+        assert_eq!(state.get_special_actions().len(), 2);
+        assert!(!state.get_special_action_usable("Test2"));
+        assert!(!state.get_any_special_usable());
     }
 }

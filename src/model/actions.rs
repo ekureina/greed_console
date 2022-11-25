@@ -15,6 +15,14 @@ impl SpecialAction {
         }
     }
 
+    pub fn is_named<S: Into<String>>(&self, name: S) -> bool {
+        self.name == name.into()
+    }
+
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
     pub fn is_usable(&self) -> bool {
         self.usable
     }
@@ -96,5 +104,20 @@ mod tests {
         special.refresh();
 
         assert!(special.is_usable());
+    }
+
+    #[test]
+    fn test_is_named() {
+        let special = SpecialAction::new("Test");
+
+        assert!(special.is_named("Test"));
+        assert!(!special.is_named("Prod"));
+    }
+
+    #[test]
+    fn test_name() {
+        let special = SpecialAction::new("Test");
+
+        assert_eq!(special.get_name(), "Test");
     }
 }
