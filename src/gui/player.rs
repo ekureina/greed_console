@@ -1,4 +1,4 @@
-use crate::model::game_state::GameState;
+use crate::model::{actions::SpecialAction, game_state::GameState};
 
 use eframe::egui;
 
@@ -48,14 +48,14 @@ impl GuiGreedApp {
         egui::SidePanel::right("extras")
             .resizable(false)
             .show(ctx, |ui| {
-                egui::TopBottomPanel::top("primary_extras")
-                    .resizable(false)
-                    .show_inside(ui, |ui| {
+                ui.group(|ui| {
+                    ui.label("Refresh Actions");
+                    ui.group(|ui| {
                         ui.label("Primary Refreshing Actions");
-                        if self.game_state.get_special_action_exists("Action Surge")
+                        if self.game_state.get_special_action_exists(&"Action Surge")
                             && ui
                                 .add_enabled(
-                                    self.game_state.get_special_action_usable("Action Surge")
+                                    self.game_state.get_special_action_usable(&"Action Surge")
                                         && self.game_state.get_any_special_usable(),
                                     egui::Button::new("Action Surge (Special Action)"),
                                 )
@@ -77,12 +77,29 @@ impl GuiGreedApp {
                             self.game_state.use_primary();
                         }
                     });
-                ui.group(|ui| {
-                    ui.label("Secondary Refreshing Actions");
-                    if ui.button("Rally Wink Targeted").clicked() {
-                        self.game_state.extra_secondary();
-                    }
+                    ui.group(|ui| {
+                        ui.label("Secondary Refreshing Actions");
+                        if ui.button("Rally Wink Targeted").clicked() {
+                            self.game_state.extra_secondary();
+                        }
+                    });
                 });
+
+                ui.group(|ui| {
+                    ui.label("Other Extras:");
+                    if ui
+                        .add_enabled(
+                            self.game_state
+                                .get_special_actions()
+                                .iter()
+                                .any(SpecialAction::is_usable),
+                            egui::Button::new("Exhaust Special Actions"),
+                        )
+                        .clicked()
+                    {
+                        self.game_state.exhaust_specials();
+                    }
+                })
             });
     }
 

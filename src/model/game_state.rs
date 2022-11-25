@@ -77,6 +77,15 @@ impl GameState {
     }
 
     /**
+     * Exhaust all specials in this game
+     */
+    pub fn exhaust_specials(&mut self) {
+        for action in &mut self.special_actions.iter_mut() {
+            action.use_action();
+        }
+    }
+
+    /**
      * Set GameState such that inspiration was used
      */
     pub fn use_inspiration(&mut self) {
@@ -151,7 +160,7 @@ impl GameState {
     /**
      * Query if the given special action is a contained special action
      */
-    pub fn get_special_action_exists<S: Into<String> + Clone>(&self, name: S) -> bool {
+    pub fn get_special_action_exists<S: Into<String> + Clone>(&self, name: &S) -> bool {
         self.special_actions
             .iter()
             .any(|action| action.is_named(name.clone()))
@@ -160,7 +169,7 @@ impl GameState {
     /**
      * Query if the given special action is usable
      */
-    pub fn get_special_action_usable<S: Into<String> + Clone>(&self, name: S) -> bool {
+    pub fn get_special_action_usable<S: Into<String> + Clone>(&self, name: &S) -> bool {
         self.special_actions
             .iter()
             .any(|action| action.is_named(name.clone()) && action.is_usable())
@@ -330,37 +339,54 @@ mod tests {
         state.new_special("Test");
 
         assert_eq!(state.get_special_actions().len(), 1);
-        assert!(state.get_special_action_usable("Test"));
+        assert!(state.get_special_action_usable(&"Test"));
         assert!(state.get_any_special_usable());
 
         state.use_special("Test");
 
         assert_eq!(state.get_special_actions().len(), 1);
-        assert!(!state.get_special_action_usable("Test"));
+        assert!(!state.get_special_action_usable(&"Test"));
         assert!(!state.get_any_special_usable());
 
         state.next_turn();
 
         assert_eq!(state.get_special_actions().len(), 1);
-        assert!(!state.get_special_action_usable("Test"));
+        assert!(!state.get_special_action_usable(&"Test"));
         assert!(!state.get_any_special_usable());
 
         state.new_special("Test2");
 
         assert_eq!(state.get_special_actions().len(), 2);
-        assert!(state.get_special_action_usable("Test2"));
+        assert!(state.get_special_action_usable(&"Test2"));
         assert!(state.get_any_special_usable());
 
         state.use_special("Test2");
 
         assert_eq!(state.get_special_actions().len(), 2);
-        assert!(!state.get_special_action_usable("Test2"));
+        assert!(!state.get_special_action_usable(&"Test2"));
         assert!(!state.get_any_special_usable());
 
         state.next_turn();
 
         assert_eq!(state.get_special_actions().len(), 2);
-        assert!(!state.get_special_action_usable("Test2"));
+        assert!(!state.get_special_action_usable(&"Test2"));
+        assert!(!state.get_any_special_usable());
+    }
+
+    #[test]
+    fn test_exhaust_specials() {
+        let mut state = GameState::default();
+
+        for i in 0..500 {
+            state.new_special(format!("Test{}", i));
+        }
+
+        assert_eq!(state.special_actions.len(), 500);
+        assert!(state.get_any_special_usable());
+
+        state.exhaust_specials();
+
+        assert_eq!(state.special_actions.len(), 500);
         assert!(!state.get_any_special_usable());
     }
 }
