@@ -77,6 +77,19 @@ impl GameState {
     }
 
     /**
+     * Refresh a specific Special Move
+     */
+    pub fn refresh_special<S: Into<String> + Clone>(&mut self, name: S) {
+        for action in &mut self.special_actions.iter_mut() {
+            if action.is_named(name.clone()) {
+                action.refresh();
+                info!("Refreshed Action {}", name.into());
+                break;
+            }
+        }
+    }
+
+    /**
      * Exhaust all specials in this game
      */
     pub fn exhaust_specials(&mut self) {
@@ -388,5 +401,23 @@ mod tests {
 
         assert_eq!(state.special_actions.len(), 500);
         assert!(!state.get_any_special_usable());
+    }
+
+    #[test]
+    fn test_refreshable_specials() {
+        let mut state = GameState::default();
+        state.new_special("Test");
+
+        state.use_special("Test");
+
+        assert!(!state.get_special_action_usable(&"Test"));
+
+        state.next_turn();
+
+        assert!(!state.get_special_action_usable(&"Test"));
+
+        state.refresh_special("Test");
+
+        assert!(state.get_special_action_usable(&"Test"));
     }
 }
