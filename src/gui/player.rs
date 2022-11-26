@@ -191,7 +191,7 @@ impl GuiGreedApp {
     fn add_new_special(&mut self) {
         if !self.special_add_text_buffer.is_empty() {
             self.game_state
-                .new_special(self.special_add_text_buffer.clone());
+                .new_special(self.special_add_text_buffer.clone(), "Lorem ipsum");
             self.special_add_text_buffer.clear();
         }
     }
