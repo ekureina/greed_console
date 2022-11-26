@@ -90,6 +90,18 @@ impl GameState {
     }
 
     /**
+     * Get the description of the specified special move
+     */
+    pub fn get_special_description<S: Into<String> + Clone>(&mut self, name: &S) -> Option<String> {
+        for action in &mut self.special_actions.iter() {
+            if action.is_named(name.clone()) {
+                return Some(action.get_description());
+            }
+        }
+        None
+    }
+
+    /**
      * Exhaust all specials in this game
      */
     pub fn exhaust_specials(&mut self) {
@@ -420,5 +432,17 @@ mod tests {
         state.refresh_special("Test");
 
         assert!(state.get_special_action_usable(&"Test"));
+    }
+
+    #[test]
+    fn test_get_special_description() {
+        let mut state = GameState::default();
+        state.new_special("Test", "Lorem ipsum");
+
+        assert_eq!(
+            state.get_special_description(&"Test"),
+            Some("Lorem ipsum".to_owned())
+        );
+        assert_eq!(state.get_special_description(&"Test2"), None);
     }
 }

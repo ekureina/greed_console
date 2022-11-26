@@ -78,6 +78,11 @@ impl GuiGreedApp {
                                         && self.game_state.get_any_special_usable(),
                                     egui::Button::new("Action Surge (Special Action)"),
                                 )
+                                .on_hover_text(
+                                    self.game_state
+                                        .get_special_description(&"Action Surge")
+                                        .unwrap(),
+                                )
                                 .clicked()
                         {
                             self.game_state.extra_primary();
@@ -156,7 +161,11 @@ impl GuiGreedApp {
                 }
             });
 
-            if !self.game_state.get_special_actions().is_empty() {
+            // List of all non-Action surge specials
+            if !self.game_state.get_special_actions().is_empty()
+                && self.game_state.get_special_actions().len() > 1
+                || !self.game_state.get_special_action_exists(&"Action Surge")
+            {
                 ui.group(|ui| {
                     ui.label("Specials:");
 
@@ -168,6 +177,7 @@ impl GuiGreedApp {
                                     action.is_usable() && self.game_state.get_any_special_usable(),
                                     egui::Button::new(action.get_name()),
                                 )
+                                .on_hover_text(action.get_description())
                                 .clicked()
                         {
                             self.game_state.use_special(action.get_name());
