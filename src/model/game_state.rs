@@ -123,7 +123,7 @@ impl GameState {
      * Register a new special action
      */
     pub fn new_special<S: Into<String>>(&mut self, name: S) {
-        self.special_actions.push(SpecialAction::new(name));
+        self.special_actions.push(SpecialAction::new(name, ""));
     }
 
     /**
