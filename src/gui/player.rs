@@ -6,6 +6,7 @@ use eframe::egui;
 pub struct GuiGreedApp {
     game_state: GameState,
     special_add_text_buffer: String,
+    special_refresh_text_buffer: String,
 }
 
 impl GuiGreedApp {
@@ -39,6 +40,24 @@ impl GuiGreedApp {
                         .lost_focus()
                     {
                         self.add_new_special();
+                    }
+
+                    if ui.button("Add").clicked() {
+                        self.add_new_special();
+                    }
+                });
+
+                ui.group(|ui| {
+                    ui.label("Refresh Special:");
+                    if ui
+                        .text_edit_singleline(&mut self.special_refresh_text_buffer)
+                        .lost_focus()
+                    {
+                        self.refresh_special();
+                    }
+
+                    if ui.button("Refresh").clicked() {
+                        self.refresh_special();
                     }
                 });
             });
@@ -174,6 +193,14 @@ impl GuiGreedApp {
             self.game_state
                 .new_special(self.special_add_text_buffer.clone());
             self.special_add_text_buffer.clear();
+        }
+    }
+
+    fn refresh_special(&mut self) {
+        if !self.special_refresh_text_buffer.is_empty() {
+            self.game_state
+                .refresh_special(self.special_refresh_text_buffer.clone());
+            self.special_refresh_text_buffer.clear();
         }
     }
 }
