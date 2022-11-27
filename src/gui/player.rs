@@ -1,6 +1,11 @@
-use crate::model::{actions::SpecialAction, game_state::GameState};
+use crate::model::{actions::SpecialAction, game_state::GameState, sheets::Character};
 
 use eframe::egui;
+use eframe::glow::Context;
+use eframe::Storage;
+use log::info;
+
+use std::time::Duration;
 
 #[derive(Default)]
 pub struct GuiGreedApp {
@@ -12,6 +17,7 @@ pub struct GuiGreedApp {
 
 impl GuiGreedApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+        info!("Starting up app!");
         Self::default()
     }
 
@@ -228,5 +234,20 @@ impl eframe::App for GuiGreedApp {
         self.extras_panel(ctx);
 
         self.main_panel(ctx);
+    }
+
+    fn save(&mut self, _storage: &mut dyn Storage) {
+        let mut character_sheet = Character::new();
+        character_sheet.add_special_actions(self.game_state.get_special_actions().clone());
+        let ron_sheet = ron::to_string(&character_sheet).unwrap();
+        info!("Saving! Character sheet: {}", ron_sheet);
+    }
+
+    fn auto_save_interval(&self) -> Duration {
+        Duration::from_secs(1)
+    }
+
+    fn on_exit(&mut self, _gl: Option<&Context>) {
+        info!("App Shutting down!");
     }
 }

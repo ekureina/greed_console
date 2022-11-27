@@ -1,11 +1,19 @@
+use serde::{Deserialize, Serialize};
+
 /**
  * Struct defining a Greed Special Action
  */
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpecialAction {
     name: String,
     description: String,
+    #[serde(skip)]
+    #[serde(default = "default_usable")]
     usable: bool,
+}
+
+fn default_usable() -> bool {
+    true
 }
 
 impl SpecialAction {
