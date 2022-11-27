@@ -10,10 +10,6 @@ pub struct Character {
 }
 
 impl Character {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn add_primary_action(&mut self, action: PrimaryAction) {
         self.primary_actions.push(action);
     }
@@ -44,15 +40,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new() {
-        let character = Character::new();
-
-        assert!(character.special_actions.is_empty());
-    }
-
-    #[test]
     fn test_add_primary_actions() {
-        let mut character = Character::new();
+        let mut character = Character::default();
 
         let actions = vec![
             PrimaryAction::new("Test", "Lorem ipsum"),
@@ -68,7 +57,7 @@ mod tests {
 
     #[test]
     fn test_add_secondary_actions() {
-        let mut character = Character::new();
+        let mut character = Character::default();
 
         let actions = vec![
             SecondaryAction::new("Test", "Lorem ipsum"),
@@ -84,7 +73,7 @@ mod tests {
 
     #[test]
     fn test_add_special_actions() {
-        let mut character = Character::new();
+        let mut character = Character::default();
 
         let actions = vec![
             SpecialAction::new("Test", "Lorem ipsum"),
@@ -100,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_get_primary_actions() {
-        let mut character = Character::new();
+        let mut character = Character::default();
 
         let actions = vec![
             PrimaryAction::new("Test", "Lorem ipsum"),
@@ -116,7 +105,7 @@ mod tests {
 
     #[test]
     fn test_get_secondary_actions() {
-        let mut character = Character::new();
+        let mut character = Character::default();
 
         let actions = vec![
             SecondaryAction::new("Test", "Lorem ipsum"),
@@ -132,7 +121,7 @@ mod tests {
 
     #[test]
     fn test_get_special_actions() {
-        let mut character = Character::new();
+        let mut character = Character::default();
 
         let actions = vec![
             SpecialAction::new("Test", "Lorem ipsum"),
