@@ -56,35 +56,50 @@ impl GuiGreedApp {
         egui::TopBottomPanel::top("campaign")
             .resizable(false)
             .show(ctx, |ui| {
-                ui.label(format!(
-                    "Current Campaign: {}",
-                    self.app_state
-                        .get_current_campaign_name()
-                        .unwrap_or_default()
-                ));
-                ui.group(|ui| {
-                    ui.label("Switch Campaign:");
-                    ui.text_edit_singleline(&mut self.current_campaign_text);
-                    if ui.button("Switch").clicked() && !self.current_campaign_text.is_empty() {
-                        if !self
-                            .app_state
-                            .get_campaign_exists(self.current_campaign_text.clone())
-                        {
-                            self.app_state
-                                .create_campaign(self.current_campaign_text.clone());
-                        }
+                let click_response = ui.add(
+                    egui::Label::new(format!(
+                        "Current Campaign: {}",
                         self.app_state
-                            .set_current_campaign(self.current_campaign_text.clone());
-                        self.current_campaign_text.clear();
-                        let current_campaign = self.app_state.get_current_campaign().unwrap();
-                        self.primary_actions = current_campaign.get_primary_actions();
-                        self.secondary_actions = current_campaign.get_secondary_actions();
-                        self.game_state = GameState::default();
-                        for action in &current_campaign.get_special_actions() {
-                            self.game_state
-                                .new_special(action.get_name(), action.get_description());
+                            .get_current_campaign_name()
+                            .unwrap_or_default()
+                    ))
+                    .sense(egui::Sense::click()),
+                );
+                let popup_id = ui.make_persistent_id("campaign_poupup");
+                if click_response.clicked() {
+                    info!("Opened popup!");
+                    ui.memory().open_popup(popup_id);
+                }
+                egui::popup::popup_below_widget(ui, popup_id, &click_response, |ui| {
+                    ui.group(|ui| {
+                        ui.set_min_width(200.0);
+                        ui.label("Switch Campaign:");
+                        ui.text_edit_singleline(&mut self.current_campaign_text);
+                        if ui.button("Switch").clicked() {
+                            info!("Button Clicked!");
+                            if !self.current_campaign_text.is_empty() {
+                                if !self
+                                    .app_state
+                                    .get_campaign_exists(self.current_campaign_text.clone())
+                                {
+                                    self.app_state
+                                        .create_campaign(self.current_campaign_text.clone());
+                                }
+                                self.app_state
+                                    .set_current_campaign(self.current_campaign_text.clone());
+                                self.current_campaign_text.clear();
+                                let current_campaign =
+                                    self.app_state.get_current_campaign().unwrap();
+                                self.primary_actions = current_campaign.get_primary_actions();
+                                self.secondary_actions = current_campaign.get_secondary_actions();
+                                self.game_state = GameState::default();
+                                for action in &current_campaign.get_special_actions() {
+                                    self.game_state
+                                        .new_special(action.get_name(), action.get_description());
+                                }
+                            }
                         }
-                    }
+                    })
                 });
             });
     }
