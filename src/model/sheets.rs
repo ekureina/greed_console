@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 
-#[derive(Serialize, Deserialize, Default, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Default, Debug, Eq, PartialEq, Clone)]
 pub struct Character {
     primary_actions: Vec<PrimaryAction>,
     secondary_actions: Vec<SecondaryAction>,
@@ -14,16 +14,16 @@ impl Character {
         Self::default()
     }
 
-    pub fn add_primary_actions<V: Into<Vec<PrimaryAction>>>(&mut self, actions: V) {
-        self.primary_actions.extend(actions.into());
+    pub fn add_primary_action(&mut self, action: PrimaryAction) {
+        self.primary_actions.push(action);
     }
 
-    pub fn add_secondary_actions<V: Into<Vec<SecondaryAction>>>(&mut self, actions: V) {
-        self.secondary_actions.extend(actions.into());
+    pub fn add_secondary_action(&mut self, action: SecondaryAction) {
+        self.secondary_actions.push(action);
     }
 
-    pub fn add_special_actions<V: Into<Vec<SpecialAction>>>(&mut self, actions: V) {
-        self.special_actions.extend(actions.into());
+    pub fn add_special_action(&mut self, action: SpecialAction) {
+        self.special_actions.push(action);
     }
 
     pub fn get_primary_actions(&self) -> Vec<PrimaryAction> {
@@ -59,7 +59,9 @@ mod tests {
             PrimaryAction::new("Test2", "Lorem ipsum"),
         ];
 
-        character.add_primary_actions(actions.clone());
+        for action in &actions {
+            character.add_primary_action(action.clone());
+        }
 
         assert_eq!(character.primary_actions, actions);
     }
@@ -73,7 +75,9 @@ mod tests {
             SecondaryAction::new("Test2", "Lorem ipsum"),
         ];
 
-        character.add_secondary_actions(actions.clone());
+        for action in &actions {
+            character.add_secondary_action(action.clone());
+        }
 
         assert_eq!(character.secondary_actions, actions);
     }
@@ -87,7 +91,9 @@ mod tests {
             SpecialAction::new("Test2", "Lorem ipsum"),
         ];
 
-        character.add_special_actions(actions.clone());
+        for action in &actions {
+            character.add_special_action(action.clone());
+        }
 
         assert_eq!(character.special_actions, actions);
     }
@@ -101,7 +107,9 @@ mod tests {
             PrimaryAction::new("Test2", "Lorem ipsum"),
         ];
 
-        character.add_primary_actions(actions.clone());
+        for action in &actions {
+            character.add_primary_action(action.clone());
+        }
 
         assert_eq!(character.get_primary_actions(), actions);
     }
@@ -115,7 +123,9 @@ mod tests {
             SecondaryAction::new("Test2", "Lorem ipsum"),
         ];
 
-        character.add_secondary_actions(actions.clone());
+        for action in &actions {
+            character.add_secondary_action(action.clone());
+        }
 
         assert_eq!(character.get_secondary_actions(), actions);
     }
@@ -129,7 +139,9 @@ mod tests {
             SpecialAction::new("Test2", "Lorem ipsum"),
         ];
 
-        character.add_special_actions(actions.clone());
+        for action in &actions {
+            character.add_special_action(action.clone());
+        }
 
         assert_eq!(character.get_special_actions(), actions);
     }

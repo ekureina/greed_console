@@ -1,5 +1,6 @@
+use super::state::AppState;
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
-use crate::model::{game_state::GameState, sheets::Character};
+use crate::model::game_state::GameState;
 
 use eframe::egui;
 use eframe::glow::Context;
@@ -11,6 +12,8 @@ use std::time::Duration;
 #[derive(Default)]
 pub struct GuiGreedApp {
     game_state: GameState,
+    app_state: AppState,
+    current_campaign_text: String,
     primary_actions: Vec<PrimaryAction>,
     primary_add_text_buffer: String,
     primary_add_description_text_buffer: String,
@@ -23,26 +26,59 @@ pub struct GuiGreedApp {
 }
 
 impl GuiGreedApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext) -> GuiGreedApp {
         info!("Starting up app!");
-        let storage = cc.storage.unwrap();
-        let character: Character = if let Some(str) = storage.get_string("test.character_sheet") {
-            info!("Saved Character: {}", str);
-            ron::from_str(&str).unwrap()
+        let app_state = if let Some(storage) = cc.storage {
+            eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
         } else {
-            info!("Starting with fresh character!");
-            Character::default()
+            AppState::new()
         };
+        let character = app_state
+            .get_current_campaign()
+            .map(Clone::clone)
+            .unwrap_or_default();
+
         let mut game_state = GameState::default();
         for action in &character.get_special_actions() {
             game_state.new_special(action.get_name(), action.get_description());
         }
         GuiGreedApp {
             game_state,
+            app_state,
+            current_campaign_text: String::default(),
             primary_actions: character.get_primary_actions(),
             secondary_actions: character.get_secondary_actions(),
             ..Default::default()
         }
+    }
+
+    fn campaign_panel(&mut self, ctx: &egui::Context) {
+        egui::TopBottomPanel::top("campaign")
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.label(format!(
+                    "Current Campaign: {}",
+                    self.app_state
+                        .get_current_campaign_name()
+                        .unwrap_or_default()
+                ));
+                ui.group(|ui| {
+                    ui.label("Switch Campaign:");
+                    ui.text_edit_singleline(&mut self.current_campaign_text);
+                    if ui.button("Switch").clicked() && !self.current_campaign_text.is_empty() {
+                        if !self
+                            .app_state
+                            .get_campaign_exists(self.current_campaign_text.clone())
+                        {
+                            self.app_state
+                                .create_campaign(self.current_campaign_text.clone());
+                        }
+                        self.app_state
+                            .set_current_campaign(self.current_campaign_text.clone());
+                        self.current_campaign_text.clear();
+                    }
+                });
+            });
     }
 
     fn globals_panel(&mut self, ctx: &egui::Context) {
@@ -271,10 +307,14 @@ impl GuiGreedApp {
 
     fn add_new_primary(&mut self) {
         if !self.primary_add_text_buffer.is_empty() {
-            self.primary_actions.push(PrimaryAction::new(
+            let primary_action = PrimaryAction::new(
                 self.primary_add_text_buffer.clone(),
                 self.primary_add_description_text_buffer.clone(),
-            ));
+            );
+            self.primary_actions.push(primary_action.clone());
+            if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+                campaign.add_primary_action(primary_action);
+            }
             self.primary_add_text_buffer.clear();
             self.primary_add_description_text_buffer.clear();
         }
@@ -282,10 +322,14 @@ impl GuiGreedApp {
 
     fn add_new_secondary(&mut self) {
         if !self.secondary_add_text_buffer.is_empty() {
-            self.secondary_actions.push(SecondaryAction::new(
+            let secondary_action = SecondaryAction::new(
                 self.secondary_add_text_buffer.clone(),
                 self.secondary_add_description_text_buffer.clone(),
-            ));
+            );
+            self.secondary_actions.push(secondary_action.clone());
+            if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+                campaign.add_secondary_action(secondary_action);
+            }
             self.secondary_add_text_buffer.clear();
             self.secondary_add_description_text_buffer.clear();
         }
@@ -297,6 +341,12 @@ impl GuiGreedApp {
                 self.special_add_text_buffer.clone(),
                 self.special_add_description_text_buffer.clone(),
             );
+            if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+                campaign.add_special_action(SpecialAction::new(
+                    self.special_add_text_buffer.clone(),
+                    self.special_add_description_text_buffer.clone(),
+                ));
+            }
             self.special_add_text_buffer.clear();
             self.special_add_description_text_buffer.clear();
         }
@@ -319,31 +369,15 @@ impl eframe::App for GuiGreedApp {
 
         self.extras_panel(ctx);
 
+        self.campaign_panel(ctx);
+
         self.main_panel(ctx);
     }
 
     fn save(&mut self, storage: &mut dyn Storage) {
-        // Save character sheet if there is any data to store
-        if !self.primary_actions.is_empty()
-            || !self.secondary_actions.is_empty()
-            || !self.game_state.get_special_actions().is_empty()
-        {
-            let mut character_sheet = Character::new();
-            character_sheet.add_primary_actions(self.primary_actions.clone());
-            character_sheet.add_secondary_actions(self.secondary_actions.clone());
-            character_sheet.add_special_actions(self.game_state.get_special_actions().clone());
-            let previous_sheet = eframe::get_value::<Character>(storage, "test.character_sheet");
-            if previous_sheet.is_none() || previous_sheet.unwrap() != character_sheet {
-                let ron_sheet = ron::to_string(&character_sheet).unwrap();
-                info!("Saving! Character sheet: {}", ron_sheet);
-                storage.set_string("test.character_sheet", ron_sheet);
-                storage.flush();
-            } else {
-                info!("No update to character sheet, not saving!");
-            }
-        } else {
-            info!("No Character sheet, not saving!");
-        }
+        info!("Saving! AppState: {:?}", self.app_state);
+        eframe::set_value(storage, eframe::APP_KEY, &self.app_state);
+        storage.flush();
     }
 
     fn auto_save_interval(&self) -> Duration {
