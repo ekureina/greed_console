@@ -108,6 +108,8 @@ impl GuiGreedApp {
         egui::SidePanel::left("globals")
             .resizable(false)
             .show(ctx, |ui| {
+                ui.set_width(125.0);
+                ui.set_height(725.0);
                 egui::TopBottomPanel::top("battle")
                     .resizable(false)
                     .show_inside(ui, |ui| {
@@ -163,20 +165,6 @@ impl GuiGreedApp {
                         }
                     });
                 });
-
-                ui.group(|ui| {
-                    ui.label("Refresh Special:");
-                    if ui
-                        .text_edit_singleline(&mut self.special_refresh_text_buffer)
-                        .lost_focus()
-                    {
-                        self.refresh_special();
-                    }
-
-                    if ui.button("Refresh").clicked() {
-                        self.refresh_special();
-                    }
-                });
             });
     }
 
@@ -186,38 +174,50 @@ impl GuiGreedApp {
             .show(ctx, |ui| {
                 ui.group(|ui| {
                     ui.label("Refresh Actions");
-                    ui.group(|ui| {
-                        ui.label("Primary Refreshing Actions");
-                        if self.game_state.get_special_action_exists(&"Action Surge")
-                            && ui
-                                .add_enabled(
-                                    self.game_state.get_special_action_usable(&"Action Surge")
-                                        && self.game_state.get_any_special_usable(),
-                                    egui::Button::new("Action Surge (Special Action)"),
-                                )
-                                .on_hover_text(
-                                    self.game_state
-                                        .get_special_description(&"Action Surge")
-                                        .unwrap(),
-                                )
-                                .clicked()
-                        {
-                            self.game_state.extra_primary();
-                            self.game_state.extra_primary();
-                            self.game_state.use_special("Action Surge");
-                        }
+                    if self.game_state.get_special_action_exists(&"Action Surge")
+                        || self
+                            .primary_actions
+                            .iter()
+                            .any(|action| action.get_name() == "Execute")
+                    {
+                        ui.group(|ui| {
+                            ui.set_max_width(200.0);
+                            ui.label("Primary Refreshing Actions");
+                            if self.game_state.get_special_action_exists(&"Action Surge")
+                                && ui
+                                    .add_enabled(
+                                        self.game_state.get_special_action_usable(&"Action Surge")
+                                            && self.game_state.get_any_special_usable(),
+                                        egui::Button::new("Action Surge (Special Action)"),
+                                    )
+                                    .on_hover_text(
+                                        self.game_state
+                                            .get_special_description(&"Action Surge")
+                                            .unwrap(),
+                                    )
+                                    .clicked()
+                            {
+                                self.game_state.extra_primary();
+                                self.game_state.extra_primary();
+                                self.game_state.use_special("Action Surge");
+                            }
 
-                        if ui
-                            .add_enabled(
-                                self.game_state.get_primary_usable(),
-                                egui::Button::new("Execute (Primary Action)"),
-                            )
-                            .clicked()
-                        {
-                            self.game_state.extra_primary();
-                            self.game_state.use_primary();
-                        }
-                    });
+                            if self
+                                .primary_actions
+                                .iter()
+                                .any(|action| action.get_name() == "Execute")
+                                && ui
+                                    .add_enabled(
+                                        self.game_state.get_primary_usable(),
+                                        egui::Button::new("Execute (Primary Action)"),
+                                    )
+                                    .clicked()
+                            {
+                                self.game_state.extra_primary();
+                                self.game_state.use_primary();
+                            }
+                        });
+                    }
                     ui.group(|ui| {
                         ui.label("Secondary Refreshing Actions");
                         if ui.button("Rally Wink Targeted").clicked() {
@@ -240,67 +240,93 @@ impl GuiGreedApp {
                     {
                         self.game_state.exhaust_specials();
                     }
+                    ui.group(|ui| {
+                        ui.label("Refresh Special:");
+                        if ui
+                            .text_edit_singleline(&mut self.special_refresh_text_buffer)
+                            .lost_focus()
+                        {
+                            self.refresh_special();
+                        }
+
+                        if ui.button("Refresh").clicked() {
+                            self.refresh_special();
+                        }
+                    });
                 })
             });
     }
 
     fn main_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.group(|ui| {
-                ui.label(format!(
-                    "Primary Actions Remaining: {}",
-                    self.game_state.get_primary_actions()
-                ));
-                if ui
-                    .add_enabled(
-                        self.game_state.get_primary_usable(),
-                        egui::Button::new("Use Primary"),
-                    )
-                    .clicked()
-                {
-                    self.game_state.use_primary();
-                }
-
+            ui.set_width(200.0);
+            // List of all non-Execute primary actions
+            if self.primary_actions.len() > 1
+                || (self.primary_actions.len() == 1
+                    && self.primary_actions[0].get_name() != "Execute")
+            {
                 ui.group(|ui| {
-                    ui.label("Primary Actions:");
-                    for action in &self.primary_actions {
-                        ui.label(action.get_name())
-                            .on_hover_text(action.get_description());
+                    ui.label(format!(
+                        "Primary Actions Remaining: {}",
+                        self.game_state.get_primary_actions()
+                    ));
+                    if ui
+                        .add_enabled(
+                            self.game_state.get_primary_usable(),
+                            egui::Button::new("Use Primary"),
+                        )
+                        .clicked()
+                    {
+                        self.game_state.use_primary();
                     }
+
+                    ui.group(|ui| {
+                        ui.label("Primary Actions:");
+                        for action in &self.primary_actions {
+                            if action.get_name() != "Execute" {
+                                ui.label(action.get_name())
+                                    .on_hover_text(action.get_description());
+                            }
+                        }
+                    });
                 });
-            });
+            }
 
-            ui.group(|ui| {
-                ui.label(format!(
-                    "Secondary Actions Remaining: {}",
-                    self.game_state.get_secondary_actions()
-                ));
-                if ui
-                    .add_enabled(
-                        self.game_state.get_secondary_usable(),
-                        egui::Button::new("Use Secondary"),
-                    )
-                    .clicked()
-                {
-                    self.game_state.use_secondary();
-                }
+            if !self.secondary_actions.is_empty() {
+                ui.group(|ui| {
+                    ui.label(format!(
+                        "Secondary Actions Remaining: {}",
+                        self.game_state.get_secondary_actions()
+                    ));
+                    if ui
+                        .add_enabled(
+                            self.game_state.get_secondary_usable(),
+                            egui::Button::new("Use Secondary"),
+                        )
+                        .clicked()
+                    {
+                        self.game_state.use_secondary();
+                    }
 
-                for action in &self.secondary_actions {
-                    ui.label(action.get_name())
-                        .on_hover_text(action.get_description());
-                }
-            });
+                    ui.group(|ui| {
+                        ui.label("Secondary Actions:");
+                        for action in &self.secondary_actions {
+                            ui.label(action.get_name())
+                                .on_hover_text(action.get_description());
+                        }
+                    });
+                });
+            }
 
             // List of all non-Action surge specials
-            if !self.game_state.get_special_actions().is_empty()
-                && self.game_state.get_special_actions().len() > 1
-                || !self.game_state.get_special_action_exists(&"Action Surge")
+            if self.game_state.get_special_actions().len() > 1
+                || (self.game_state.get_special_actions().len() == 1
+                    && !self.game_state.get_special_action_exists(&"Action Surge"))
             {
                 ui.group(|ui| {
                     ui.label("Specials:");
 
-                    #[allow(clippy::explicit_iter_loop)]
-                    for action in self.game_state.get_special_actions().clone().iter() {
+                    for action in &self.game_state.get_special_actions().clone() {
                         if !action.is_named("Action Surge")
                             && ui
                                 .add_enabled(
@@ -316,12 +342,15 @@ impl GuiGreedApp {
                 });
             }
 
-            if ui
-                .add_enabled(
-                    self.game_state.get_inspiration_usable(),
-                    egui::Button::new("Use Inspiration"),
-                )
-                .clicked()
+            if !(self.primary_actions.is_empty()
+                && self.secondary_actions.is_empty()
+                && self.game_state.get_special_actions().is_empty())
+                && ui
+                    .add_enabled(
+                        self.game_state.get_inspiration_usable(),
+                        egui::Button::new("Use Inspiration"),
+                    )
+                    .clicked()
             {
                 self.game_state.use_inspiration();
             }
@@ -400,7 +429,6 @@ impl eframe::App for GuiGreedApp {
     fn save(&mut self, storage: &mut dyn Storage) {
         info!("Saving! AppState: {:?}", self.app_state);
         eframe::set_value(storage, eframe::APP_KEY, &self.app_state);
-        storage.flush();
     }
 
     fn auto_save_interval(&self) -> Duration {
