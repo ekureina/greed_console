@@ -1,6 +1,58 @@
 use serde::{Deserialize, Serialize};
 
 /**
+ * Struct defining a Greed Primary Action
+ */
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PrimaryAction {
+    name: String,
+    description: String,
+}
+
+impl PrimaryAction {
+    pub fn new<N: Into<String>, D: Into<String>>(name: N, description: D) -> Self {
+        PrimaryAction {
+            name: name.into(),
+            description: description.into(),
+        }
+    }
+
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn get_description(&self) -> String {
+        self.description.clone()
+    }
+}
+
+/**
+ * Struct defining a Greed Secondary Action
+ */
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SecondaryAction {
+    name: String,
+    description: String,
+}
+
+impl SecondaryAction {
+    pub fn new<N: Into<String>, D: Into<String>>(name: N, description: D) -> Self {
+        SecondaryAction {
+            name: name.into(),
+            description: description.into(),
+        }
+    }
+
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn get_description(&self) -> String {
+        self.description.clone()
+    }
+}
+
+/**
  * Struct defining a Greed Special Action
  */
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,6 +119,30 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_primary_name() {
+        let primary = PrimaryAction::new("Test", "");
+        assert_eq!(primary.get_name(), "Test");
+    }
+
+    #[test]
+    fn test_primary_description() {
+        let primary = PrimaryAction::new("Test", "Lorem ipsum");
+        assert_eq!(primary.get_description(), "Lorem ipsum");
+    }
+
+    #[test]
+    fn test_secondary_name() {
+        let secondary = SecondaryAction::new("Test", "");
+        assert_eq!(secondary.get_name(), "Test");
+    }
+
+    #[test]
+    fn test_secondary_description() {
+        let secondary = SecondaryAction::new("Test", "Lorem ipsum");
+        assert_eq!(secondary.get_description(), "Lorem ipsum");
+    }
+
+    #[test]
     fn test_special_action_eq_guarantees() {
         let special1 = SpecialAction::new("Test", "");
         let special2 = SpecialAction::new("Test", "");
@@ -106,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    fn test_use_and_refresh() {
+    fn test_special_use_and_refresh() {
         let mut special = SpecialAction::new("Test", "");
 
         assert!(special.is_usable());
@@ -121,7 +197,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_named() {
+    fn test_special_is_named() {
         let special = SpecialAction::new("Test", "");
 
         assert!(special.is_named("Test"));
@@ -129,14 +205,14 @@ mod tests {
     }
 
     #[test]
-    fn test_name() {
+    fn test_special_name() {
         let special = SpecialAction::new("Test", "");
 
         assert_eq!(special.get_name(), "Test");
     }
 
     #[test]
-    fn test_description() {
+    fn test_special_description() {
         let special = SpecialAction::new("Test", "Lorem ipsum");
 
         assert_eq!(special.get_description(), "Lorem ipsum");

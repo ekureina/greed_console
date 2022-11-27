@@ -1,4 +1,5 @@
-use crate::model::{actions::SpecialAction, game_state::GameState, sheets::Character};
+use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
+use crate::model::{game_state::GameState, sheets::Character};
 
 use eframe::egui;
 use eframe::glow::Context;
@@ -10,15 +11,38 @@ use std::time::Duration;
 #[derive(Default)]
 pub struct GuiGreedApp {
     game_state: GameState,
+    primary_actions: Vec<PrimaryAction>,
+    primary_add_text_buffer: String,
+    primary_add_description_text_buffer: String,
+    secondary_actions: Vec<SecondaryAction>,
+    secondary_add_text_buffer: String,
+    secondary_add_description_text_buffer: String,
     special_add_text_buffer: String,
     special_refresh_text_buffer: String,
     special_add_description_text_buffer: String,
 }
 
 impl GuiGreedApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         info!("Starting up app!");
-        Self::default()
+        let storage = cc.storage.unwrap();
+        let character: Character = if let Some(str) = storage.get_string("test.character_sheet") {
+            info!("Saved Character: {}", str);
+            ron::from_str(&str).unwrap()
+        } else {
+            info!("Starting with fresh character!");
+            Character::default()
+        };
+        let mut game_state = GameState::default();
+        for action in &character.get_special_actions() {
+            game_state.new_special(action.get_name(), action.get_description());
+        }
+        GuiGreedApp {
+            game_state,
+            primary_actions: character.get_primary_actions(),
+            secondary_actions: character.get_secondary_actions(),
+            ..Default::default()
+        }
     }
 
     fn globals_panel(&mut self, ctx: &egui::Context) {
@@ -41,17 +65,44 @@ impl GuiGreedApp {
                 });
 
                 ui.group(|ui| {
-                    ui.label("Add Special:");
+                    ui.label("Add Actions:");
+                    ui.group(|ui| {
+                        ui.label("Add Primary:");
+                        ui.label("Name:");
+                        ui.text_edit_singleline(&mut self.primary_add_text_buffer);
 
-                    ui.label("Name:");
-                    ui.text_edit_singleline(&mut self.special_add_text_buffer);
+                        ui.label("Description:");
+                        ui.text_edit_multiline(&mut self.primary_add_description_text_buffer);
 
-                    ui.label("Description:");
-                    ui.text_edit_multiline(&mut self.special_add_description_text_buffer);
+                        if ui.button("Add").clicked() {
+                            self.add_new_primary();
+                        }
+                    });
+                    ui.group(|ui| {
+                        ui.label("Add Secondary:");
+                        ui.label("Name:");
+                        ui.text_edit_singleline(&mut self.secondary_add_text_buffer);
 
-                    if ui.button("Add").clicked() {
-                        self.add_new_special();
-                    }
+                        ui.label("Description:");
+                        ui.text_edit_multiline(&mut self.secondary_add_description_text_buffer);
+
+                        if ui.button("Add").clicked() {
+                            self.add_new_secondary();
+                        }
+                    });
+                    ui.group(|ui| {
+                        ui.label("Add Special:");
+
+                        ui.label("Name:");
+                        ui.text_edit_singleline(&mut self.special_add_text_buffer);
+
+                        ui.label("Description:");
+                        ui.text_edit_multiline(&mut self.special_add_description_text_buffer);
+
+                        if ui.button("Add").clicked() {
+                            self.add_new_special();
+                        }
+                    });
                 });
 
                 ui.group(|ui| {
@@ -150,6 +201,14 @@ impl GuiGreedApp {
                 {
                     self.game_state.use_primary();
                 }
+
+                ui.group(|ui| {
+                    ui.label("Primary Actions:");
+                    for action in &self.primary_actions {
+                        ui.label(action.get_name())
+                            .on_hover_text(action.get_description());
+                    }
+                });
             });
 
             ui.group(|ui| {
@@ -165,6 +224,11 @@ impl GuiGreedApp {
                     .clicked()
                 {
                     self.game_state.use_secondary();
+                }
+
+                for action in &self.secondary_actions {
+                    ui.label(action.get_name())
+                        .on_hover_text(action.get_description());
                 }
             });
 
@@ -205,6 +269,28 @@ impl GuiGreedApp {
         });
     }
 
+    fn add_new_primary(&mut self) {
+        if !self.primary_add_text_buffer.is_empty() {
+            self.primary_actions.push(PrimaryAction::new(
+                self.primary_add_text_buffer.clone(),
+                self.primary_add_description_text_buffer.clone(),
+            ));
+            self.primary_add_text_buffer.clear();
+            self.primary_add_description_text_buffer.clear();
+        }
+    }
+
+    fn add_new_secondary(&mut self) {
+        if !self.secondary_add_text_buffer.is_empty() {
+            self.secondary_actions.push(SecondaryAction::new(
+                self.secondary_add_text_buffer.clone(),
+                self.secondary_add_description_text_buffer.clone(),
+            ));
+            self.secondary_add_text_buffer.clear();
+            self.secondary_add_description_text_buffer.clear();
+        }
+    }
+
     fn add_new_special(&mut self) {
         if !self.special_add_text_buffer.is_empty() {
             self.game_state.new_special(
@@ -236,15 +322,19 @@ impl eframe::App for GuiGreedApp {
         self.main_panel(ctx);
     }
 
-    fn save(&mut self, _storage: &mut dyn Storage) {
+    fn save(&mut self, storage: &mut dyn Storage) {
         let mut character_sheet = Character::new();
+        character_sheet.add_primary_actions(self.primary_actions.clone());
+        character_sheet.add_secondary_actions(self.secondary_actions.clone());
         character_sheet.add_special_actions(self.game_state.get_special_actions().clone());
         let ron_sheet = ron::to_string(&character_sheet).unwrap();
         info!("Saving! Character sheet: {}", ron_sheet);
+        storage.set_string("test.character_sheet", ron_sheet);
+        storage.flush();
     }
 
     fn auto_save_interval(&self) -> Duration {
-        Duration::from_secs(1)
+        Duration::from_secs(60)
     }
 
     fn on_exit(&mut self, _gl: Option<&Context>) {
