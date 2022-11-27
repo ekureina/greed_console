@@ -76,6 +76,14 @@ impl GuiGreedApp {
                         self.app_state
                             .set_current_campaign(self.current_campaign_text.clone());
                         self.current_campaign_text.clear();
+                        let current_campaign = self.app_state.get_current_campaign().unwrap();
+                        self.primary_actions = current_campaign.get_primary_actions();
+                        self.secondary_actions = current_campaign.get_secondary_actions();
+                        self.game_state = GameState::default();
+                        for action in &current_campaign.get_special_actions() {
+                            self.game_state
+                                .new_special(action.get_name(), action.get_description());
+                        }
                     }
                 });
             });
@@ -365,11 +373,11 @@ impl eframe::App for GuiGreedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         frame.set_window_title("Greed Console");
 
+        self.campaign_panel(ctx);
+
         self.globals_panel(ctx);
 
         self.extras_panel(ctx);
-
-        self.campaign_panel(ctx);
 
         self.main_panel(ctx);
     }
