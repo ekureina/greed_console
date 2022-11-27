@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, Eq, PartialEq)]
 pub struct Character {
     primary_actions: Vec<PrimaryAction>,
     secondary_actions: Vec<SecondaryAction>,

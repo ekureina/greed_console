@@ -323,14 +323,27 @@ impl eframe::App for GuiGreedApp {
     }
 
     fn save(&mut self, storage: &mut dyn Storage) {
-        let mut character_sheet = Character::new();
-        character_sheet.add_primary_actions(self.primary_actions.clone());
-        character_sheet.add_secondary_actions(self.secondary_actions.clone());
-        character_sheet.add_special_actions(self.game_state.get_special_actions().clone());
-        let ron_sheet = ron::to_string(&character_sheet).unwrap();
-        info!("Saving! Character sheet: {}", ron_sheet);
-        storage.set_string("test.character_sheet", ron_sheet);
-        storage.flush();
+        // Save character sheet if there is any data to store
+        if !self.primary_actions.is_empty()
+            || !self.secondary_actions.is_empty()
+            || !self.game_state.get_special_actions().is_empty()
+        {
+            let mut character_sheet = Character::new();
+            character_sheet.add_primary_actions(self.primary_actions.clone());
+            character_sheet.add_secondary_actions(self.secondary_actions.clone());
+            character_sheet.add_special_actions(self.game_state.get_special_actions().clone());
+            let previous_sheet = eframe::get_value::<Character>(storage, "test.character_sheet");
+            if previous_sheet.is_none() || previous_sheet.unwrap() != character_sheet {
+                let ron_sheet = ron::to_string(&character_sheet).unwrap();
+                info!("Saving! Character sheet: {}", ron_sheet);
+                storage.set_string("test.character_sheet", ron_sheet);
+                storage.flush();
+            } else {
+                info!("No update to character sheet, not saving!");
+            }
+        } else {
+            info!("No Character sheet, not saving!");
+        }
     }
 
     fn auto_save_interval(&self) -> Duration {
