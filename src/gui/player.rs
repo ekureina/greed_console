@@ -97,39 +97,77 @@ impl GuiGreedApp {
                         })
                     });
                     ui.menu_button("Actions", |ui| {
-                        ui.menu_button("Add Primary", |ui| {
-                            ui.label("Name:");
-                            ui.text_edit_singleline(&mut self.primary_add_text_buffer);
+                        ui.menu_button("Primary", |ui| {
+                            ui.menu_button("Add", |ui| {
+                                ui.label("Name:");
+                                ui.text_edit_singleline(&mut self.primary_add_text_buffer);
 
-                            ui.label("Description:");
-                            ui.text_edit_multiline(&mut self.primary_add_description_text_buffer);
+                                ui.label("Description:");
+                                ui.text_edit_multiline(
+                                    &mut self.primary_add_description_text_buffer,
+                                );
 
-                            if ui.button("Add").clicked() {
-                                self.add_new_primary();
-                                ui.close_menu();
-                            }
+                                if ui.button("Add").clicked() {
+                                    self.add_new_primary();
+                                    ui.close_menu();
+                                }
+                            });
+                            ui.menu_button("Remove", |ui| {
+                                for action in &self.primary_actions {
+                                    if ui.button(action.get_name()).clicked() {
+                                        info!("Removing Primary Action: {}", action.get_name());
+                                    }
+                                }
+                            });
                         });
-                        ui.menu_button("Add Secondary", |ui| {
-                            ui.label("Name:");
-                            ui.text_edit_singleline(&mut self.secondary_add_text_buffer);
+                        ui.menu_button("Secondary", |ui| {
+                            ui.menu_button("Add", |ui| {
+                                ui.label("Name:");
+                                ui.text_edit_singleline(&mut self.secondary_add_text_buffer);
 
-                            ui.label("Description:");
-                            ui.text_edit_multiline(&mut self.secondary_add_description_text_buffer);
+                                ui.label("Description:");
+                                ui.text_edit_multiline(
+                                    &mut self.secondary_add_description_text_buffer,
+                                );
 
-                            if ui.button("Add").clicked() {
-                                self.add_new_secondary();
-                            }
+                                if ui.button("Add").clicked() {
+                                    self.add_new_secondary();
+                                }
+                            });
+                            ui.menu_button("Remove", |ui| {
+                                for action in &self.secondary_actions {
+                                    if ui.button(action.get_name()).clicked() {
+                                        info!("Removing Secondary Action: {}", action.get_name());
+                                    }
+                                }
+                            });
                         });
-                        ui.menu_button("Add Special", |ui| {
-                            ui.label("Name:");
-                            ui.text_edit_singleline(&mut self.special_add_text_buffer);
+                        ui.menu_button("Special", |ui| {
+                            ui.menu_button("Add", |ui| {
+                                ui.label("Name:");
+                                ui.text_edit_singleline(&mut self.special_add_text_buffer);
 
-                            ui.label("Description:");
-                            ui.text_edit_multiline(&mut self.special_add_description_text_buffer);
+                                ui.label("Description:");
+                                ui.text_edit_multiline(
+                                    &mut self.special_add_description_text_buffer,
+                                );
 
-                            if ui.button("Add").clicked() {
-                                self.add_new_special();
-                            }
+                                if ui.button("Add").clicked() {
+                                    self.add_new_special();
+                                }
+                            });
+                            ui.menu_button("Remove", |ui| {
+                                for action in &self
+                                    .app_state
+                                    .get_current_campaign()
+                                    .unwrap()
+                                    .get_special_actions()
+                                {
+                                    if ui.button(action.get_name()).clicked() {
+                                        info!("Removing Special Action: {}", action.get_name());
+                                    }
+                                }
+                            });
                         });
                     });
                     if ui.button("Next Battle").clicked() {
@@ -142,6 +180,7 @@ impl GuiGreedApp {
                 });
             });
     }
+
     fn switch_campaign(&mut self, new_campaign_name: String) {
         self.app_state.set_current_campaign(new_campaign_name);
         let current_campaign = self.app_state.get_current_campaign().unwrap();
