@@ -52,32 +52,28 @@ impl GuiGreedApp {
         }
     }
 
-    fn campaign_panel(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::top("campaign")
+    fn menu_panel(&mut self, ctx: &egui::Context) {
+        egui::TopBottomPanel::top("menu")
             .resizable(false)
             .show(ctx, |ui| {
-                let click_response = ui.add(
-                    egui::Label::new(format!(
-                        "Current Campaign: {}",
-                        self.app_state
-                            .get_current_campaign_name()
-                            .unwrap_or_default()
-                    ))
-                    .sense(egui::Sense::click()),
-                );
-                let popup_id = ui.make_persistent_id("campaign_poupup");
-                if click_response.clicked() {
-                    info!("Opened popup!");
-                    ui.memory().open_popup(popup_id);
-                }
-                egui::popup::popup_below_widget(ui, popup_id, &click_response, |ui| {
-                    ui.group(|ui| {
-                        ui.set_min_width(200.0);
-                        ui.label("Switch Campaign:");
-                        ui.text_edit_singleline(&mut self.current_campaign_text);
-                        if ui.button("Switch").clicked() {
-                            info!("Button Clicked!");
-                            if !self.current_campaign_text.is_empty() {
+                ui.horizontal(|ui| {
+                    ui.menu_button(
+                        format!(
+                            "Current Campaign: {}",
+                            self.app_state
+                                .get_current_campaign_name()
+                                .unwrap_or_default()
+                        ),
+                        |ui| {
+                            ui.set_min_width(200.0);
+                            ui.label("Switch Campaign:");
+                            if (ui
+                                .text_edit_singleline(&mut self.current_campaign_text)
+                                .lost_focus()
+                                || ui.button("Switch").clicked())
+                                && !self.current_campaign_text.is_empty()
+                            {
+                                info!("Switching to campaign: {}", self.current_campaign_text);
                                 if !self
                                     .app_state
                                     .get_campaign_exists(self.current_campaign_text.clone())
@@ -97,9 +93,13 @@ impl GuiGreedApp {
                                     self.game_state
                                         .new_special(action.get_name(), action.get_description());
                                 }
+                                ui.close_menu();
                             }
-                        }
-                    })
+                        },
+                    );
+                    if ui.button("Next Battle").clicked() {
+                        self.game_state.next_battle();
+                    }
                 });
             });
     }
@@ -108,61 +108,56 @@ impl GuiGreedApp {
         egui::SidePanel::left("globals")
             .resizable(false)
             .show(ctx, |ui| {
-                ui.set_width(125.0);
-                ui.set_height(725.0);
-                egui::TopBottomPanel::top("battle")
-                    .resizable(false)
-                    .show_inside(ui, |ui| {
-                        if ui.button("Next Battle").clicked() {
-                            self.game_state.next_battle();
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.set_width(125.0);
+                    ui.set_height(725.0);
+
+                    ui.group(|ui| {
+                        ui.label(format!("Turn: {}", self.game_state.get_turn_num()));
+                        if ui.button("Next Turn").clicked() {
+                            self.game_state.next_turn();
                         }
                     });
 
-                ui.group(|ui| {
-                    ui.label(format!("Turn: {}", self.game_state.get_turn_num()));
-                    if ui.button("Next Turn").clicked() {
-                        self.game_state.next_turn();
-                    }
-                });
-
-                ui.group(|ui| {
-                    ui.label("Add Actions:");
                     ui.group(|ui| {
-                        ui.label("Add Primary:");
-                        ui.label("Name:");
-                        ui.text_edit_singleline(&mut self.primary_add_text_buffer);
+                        ui.label("Add Actions:");
+                        ui.group(|ui| {
+                            ui.label("Add Primary:");
+                            ui.label("Name:");
+                            ui.text_edit_singleline(&mut self.primary_add_text_buffer);
 
-                        ui.label("Description:");
-                        ui.text_edit_multiline(&mut self.primary_add_description_text_buffer);
+                            ui.label("Description:");
+                            ui.text_edit_multiline(&mut self.primary_add_description_text_buffer);
 
-                        if ui.button("Add").clicked() {
-                            self.add_new_primary();
-                        }
-                    });
-                    ui.group(|ui| {
-                        ui.label("Add Secondary:");
-                        ui.label("Name:");
-                        ui.text_edit_singleline(&mut self.secondary_add_text_buffer);
+                            if ui.button("Add").clicked() {
+                                self.add_new_primary();
+                            }
+                        });
+                        ui.group(|ui| {
+                            ui.label("Add Secondary:");
+                            ui.label("Name:");
+                            ui.text_edit_singleline(&mut self.secondary_add_text_buffer);
 
-                        ui.label("Description:");
-                        ui.text_edit_multiline(&mut self.secondary_add_description_text_buffer);
+                            ui.label("Description:");
+                            ui.text_edit_multiline(&mut self.secondary_add_description_text_buffer);
 
-                        if ui.button("Add").clicked() {
-                            self.add_new_secondary();
-                        }
-                    });
-                    ui.group(|ui| {
-                        ui.label("Add Special:");
+                            if ui.button("Add").clicked() {
+                                self.add_new_secondary();
+                            }
+                        });
+                        ui.group(|ui| {
+                            ui.label("Add Special:");
 
-                        ui.label("Name:");
-                        ui.text_edit_singleline(&mut self.special_add_text_buffer);
+                            ui.label("Name:");
+                            ui.text_edit_singleline(&mut self.special_add_text_buffer);
 
-                        ui.label("Description:");
-                        ui.text_edit_multiline(&mut self.special_add_description_text_buffer);
+                            ui.label("Description:");
+                            ui.text_edit_multiline(&mut self.special_add_description_text_buffer);
 
-                        if ui.button("Add").clicked() {
-                            self.add_new_special();
-                        }
+                            if ui.button("Add").clicked() {
+                                self.add_new_special();
+                            }
+                        });
                     });
                 });
             });
@@ -172,7 +167,7 @@ impl GuiGreedApp {
         egui::SidePanel::right("extras")
             .resizable(false)
             .show(ctx, |ui| {
-                ui.group(|ui| {
+                egui::ScrollArea::both().show(ui, |ui| {
                     ui.label("Refresh Actions");
                     if self.game_state.get_special_action_exists(&"Action Surge")
                         || self
@@ -259,101 +254,114 @@ impl GuiGreedApp {
 
     fn main_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.set_width(200.0);
-            // List of all non-Execute primary actions
-            if self.primary_actions.len() > 1
-                || (self.primary_actions.len() == 1
-                    && self.primary_actions[0].get_name() != "Execute")
-            {
-                ui.group(|ui| {
-                    ui.label(format!(
-                        "Primary Actions Remaining: {}",
-                        self.game_state.get_primary_actions()
-                    ));
-                    if ui
+            egui::ScrollArea::both().show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    // List of all non-Execute primary actions
+                    if self.primary_actions.len() > 1
+                        || (self.primary_actions.len() == 1
+                            && self.primary_actions[0].get_name() != "Execute")
+                    {
+                        ui.vertical(|ui| {
+                            ui.set_width(ui.available_width() / 3.0);
+                            ui.group(|ui| {
+                                ui.label(format!(
+                                    "Primary Actions Remaining: {}",
+                                    self.game_state.get_primary_actions()
+                                ));
+                                if ui
+                                    .add_enabled(
+                                        self.game_state.get_primary_usable(),
+                                        egui::Button::new("Use Primary"),
+                                    )
+                                    .clicked()
+                                {
+                                    self.game_state.use_primary();
+                                }
+
+                                ui.group(|ui| {
+                                    ui.label("Primary Actions:");
+                                    for action in &self.primary_actions {
+                                        if action.get_name() != "Execute" {
+                                            ui.label(action.get_name())
+                                                .on_hover_text(action.get_description());
+                                        }
+                                    }
+                                });
+                            });
+                        });
+                    }
+
+                    if !self.secondary_actions.is_empty() {
+                        ui.vertical(|ui| {
+                            ui.set_width(ui.available_width() / 2.0);
+                            ui.group(|ui| {
+                                ui.label(format!(
+                                    "Secondary Actions Remaining: {}",
+                                    self.game_state.get_secondary_actions()
+                                ));
+                                if ui
+                                    .add_enabled(
+                                        self.game_state.get_secondary_usable(),
+                                        egui::Button::new("Use Secondary"),
+                                    )
+                                    .clicked()
+                                {
+                                    self.game_state.use_secondary();
+                                }
+
+                                ui.group(|ui| {
+                                    ui.label("Secondary Actions:");
+                                    for action in &self.secondary_actions {
+                                        ui.label(action.get_name())
+                                            .on_hover_text(action.get_description());
+                                    }
+                                });
+                            });
+                        });
+                    }
+
+                    // List of all non-Action surge specials
+                    if self.game_state.get_special_actions().len() > 1
+                        || (self.game_state.get_special_actions().len() == 1
+                            && !self.game_state.get_special_action_exists(&"Action Surge"))
+                    {
+                        ui.vertical(|ui| {
+                            ui.group(|ui| {
+                                ui.label("Specials:");
+
+                                for action in &self.game_state.get_special_actions().clone() {
+                                    if !action.is_named("Action Surge")
+                                        && ui
+                                            .add_enabled(
+                                                action.is_usable()
+                                                    && self.game_state.get_any_special_usable(),
+                                                egui::Button::new(action.get_name()),
+                                            )
+                                            .on_hover_text(action.get_description())
+                                            .clicked()
+                                    {
+                                        self.game_state.use_special(action.get_name());
+                                    }
+                                }
+                            });
+                        });
+                    }
+                    ui.end_row();
+                });
+
+                if !(self.primary_actions.is_empty()
+                    && self.secondary_actions.is_empty()
+                    && self.game_state.get_special_actions().is_empty())
+                    && ui
                         .add_enabled(
-                            self.game_state.get_primary_usable(),
-                            egui::Button::new("Use Primary"),
+                            self.game_state.get_inspiration_usable(),
+                            egui::Button::new("Use Inspiration"),
                         )
                         .clicked()
-                    {
-                        self.game_state.use_primary();
-                    }
-
-                    ui.group(|ui| {
-                        ui.label("Primary Actions:");
-                        for action in &self.primary_actions {
-                            if action.get_name() != "Execute" {
-                                ui.label(action.get_name())
-                                    .on_hover_text(action.get_description());
-                            }
-                        }
-                    });
-                });
-            }
-
-            if !self.secondary_actions.is_empty() {
-                ui.group(|ui| {
-                    ui.label(format!(
-                        "Secondary Actions Remaining: {}",
-                        self.game_state.get_secondary_actions()
-                    ));
-                    if ui
-                        .add_enabled(
-                            self.game_state.get_secondary_usable(),
-                            egui::Button::new("Use Secondary"),
-                        )
-                        .clicked()
-                    {
-                        self.game_state.use_secondary();
-                    }
-
-                    ui.group(|ui| {
-                        ui.label("Secondary Actions:");
-                        for action in &self.secondary_actions {
-                            ui.label(action.get_name())
-                                .on_hover_text(action.get_description());
-                        }
-                    });
-                });
-            }
-
-            // List of all non-Action surge specials
-            if self.game_state.get_special_actions().len() > 1
-                || (self.game_state.get_special_actions().len() == 1
-                    && !self.game_state.get_special_action_exists(&"Action Surge"))
-            {
-                ui.group(|ui| {
-                    ui.label("Specials:");
-
-                    for action in &self.game_state.get_special_actions().clone() {
-                        if !action.is_named("Action Surge")
-                            && ui
-                                .add_enabled(
-                                    action.is_usable() && self.game_state.get_any_special_usable(),
-                                    egui::Button::new(action.get_name()),
-                                )
-                                .on_hover_text(action.get_description())
-                                .clicked()
-                        {
-                            self.game_state.use_special(action.get_name());
-                        }
-                    }
-                });
-            }
-
-            if !(self.primary_actions.is_empty()
-                && self.secondary_actions.is_empty()
-                && self.game_state.get_special_actions().is_empty())
-                && ui
-                    .add_enabled(
-                        self.game_state.get_inspiration_usable(),
-                        egui::Button::new("Use Inspiration"),
-                    )
-                    .clicked()
-            {
-                self.game_state.use_inspiration();
-            }
+                {
+                    self.game_state.use_inspiration();
+                }
+            });
         });
     }
 
@@ -417,7 +425,7 @@ impl eframe::App for GuiGreedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         frame.set_window_title("Greed Console");
 
-        self.campaign_panel(ctx);
+        self.menu_panel(ctx);
 
         self.globals_panel(ctx);
 
