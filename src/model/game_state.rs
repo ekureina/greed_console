@@ -208,6 +208,10 @@ impl GameState {
         &self.special_actions
     }
 
+    pub fn remove_special_action(&mut self, index: usize) {
+        self.special_actions.remove(index);
+    }
+
     /**
      * Query if it is possible to use inspiration
      */

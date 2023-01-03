@@ -21,7 +21,6 @@ pub struct GuiGreedApp {
     secondary_add_text_buffer: String,
     secondary_add_description_text_buffer: String,
     special_add_text_buffer: String,
-    special_refresh_text_buffer: String,
     special_add_description_text_buffer: String,
 }
 
@@ -186,11 +185,38 @@ impl GuiGreedApp {
                                         if let Some(campaign) =
                                             self.app_state.get_current_campaign_mut()
                                         {
+                                            self.game_state.remove_special_action(idex);
                                             campaign.remove_special_action(idex);
                                         }
                                     }
                                 }
                             });
+                            if self
+                                .game_state
+                                .get_special_actions()
+                                .iter()
+                                .any(|action| !action.is_usable())
+                            {
+                                ui.menu_button("Refresh", |ui| {
+                                    for action in self.game_state.get_special_actions().clone() {
+                                        if !action.is_usable()
+                                            && ui.button(action.get_name()).clicked()
+                                        {
+                                            self.refresh_special(action.get_name());
+                                        }
+                                    }
+                                });
+                            }
+                            if self
+                                .game_state
+                                .get_special_actions()
+                                .iter()
+                                .any(SpecialAction::is_usable)
+                            {
+                                if ui.button("Exhaust").clicked() {
+                                    self.game_state.exhaust_specials();
+                                }
+                            }
                         });
                     });
                     if ui.button("Next Battle").clicked() {
@@ -273,35 +299,6 @@ impl GuiGreedApp {
                         }
                     });
                 });
-
-                ui.group(|ui| {
-                    ui.label("Other Extras:");
-                    if ui
-                        .add_enabled(
-                            self.game_state
-                                .get_special_actions()
-                                .iter()
-                                .any(SpecialAction::is_usable),
-                            egui::Button::new("Exhaust Special Actions"),
-                        )
-                        .clicked()
-                    {
-                        self.game_state.exhaust_specials();
-                    }
-                    ui.group(|ui| {
-                        ui.label("Refresh Special:");
-                        if ui
-                            .text_edit_singleline(&mut self.special_refresh_text_buffer)
-                            .lost_focus()
-                        {
-                            self.refresh_special();
-                        }
-
-                        if ui.button("Refresh").clicked() {
-                            self.refresh_special();
-                        }
-                    });
-                })
             });
     }
 
@@ -475,12 +472,8 @@ impl GuiGreedApp {
         }
     }
 
-    fn refresh_special(&mut self) {
-        if !self.special_refresh_text_buffer.is_empty() {
-            self.game_state
-                .refresh_special(self.special_refresh_text_buffer.clone());
-            self.special_refresh_text_buffer.clear();
-        }
+    fn refresh_special(&mut self, special_name: String) {
+        self.game_state.refresh_special(special_name);
     }
 }
 
