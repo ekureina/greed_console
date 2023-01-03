@@ -87,6 +87,14 @@ impl GuiGreedApp {
                                 }
                             }
                         });
+                        ui.menu_button("Remove", |ui| {
+                            for campaign in self.app_state.get_campaign_names() {
+                                if ui.button(campaign.clone()).clicked() {
+                                    self.app_state.remove_campaign(campaign);
+                                    ui.close_menu();
+                                }
+                            }
+                        })
                     });
                     ui.menu_button("Actions", |ui| {
                         ui.menu_button("Add Primary", |ui| {

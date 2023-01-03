@@ -62,6 +62,10 @@ impl AppState {
     pub fn get_campaign_names(&self) -> Vec<String> {
         self.campaigns.keys().map(Clone::clone).collect()
     }
+
+    pub fn remove_campaign<K: Into<String>>(&mut self, campaign_name: K) {
+        self.campaigns.remove(&campaign_name.into());
+    }
 }
 
 #[cfg(test)]
