@@ -58,6 +58,10 @@ impl AppState {
     pub fn get_campaign_exists<K: Into<String>>(&self, campaign_name: K) -> bool {
         self.campaigns.contains_key(&campaign_name.into())
     }
+
+    pub fn get_campaign_names(&self) -> Vec<String> {
+        self.campaigns.keys().map(Clone::clone).collect()
+    }
 }
 
 #[cfg(test)]

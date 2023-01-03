@@ -13,7 +13,7 @@ use std::time::Duration;
 pub struct GuiGreedApp {
     game_state: GameState,
     app_state: AppState,
-    current_campaign_text: String,
+    new_campaign_text: String,
     primary_actions: Vec<PrimaryAction>,
     primary_add_text_buffer: String,
     primary_add_description_text_buffer: String,
@@ -45,7 +45,7 @@ impl GuiGreedApp {
         GuiGreedApp {
             game_state,
             app_state,
-            current_campaign_text: String::default(),
+            new_campaign_text: String::default(),
             primary_actions: character.get_primary_actions(),
             secondary_actions: character.get_secondary_actions(),
             ..Default::default()
@@ -57,72 +57,39 @@ impl GuiGreedApp {
             .resizable(false)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.menu_button(
-                        format!(
-                            "Current Campaign: {}",
-                            self.app_state
-                                .get_current_campaign_name()
-                                .unwrap_or_default()
-                        ),
-                        |ui| {
-                            ui.set_min_width(200.0);
-                            ui.label("Switch Campaign:");
+                    ui.menu_button("Campaign", |ui| {
+                        ui.set_min_width(200.0);
+                        ui.menu_button("New", |ui| {
                             if (ui
-                                .text_edit_singleline(&mut self.current_campaign_text)
+                                .text_edit_singleline(&mut self.new_campaign_text)
                                 .lost_focus()
-                                || ui.button("Switch").clicked())
-                                && !self.current_campaign_text.is_empty()
+                                || ui.button("Create").clicked())
+                                && !self.new_campaign_text.is_empty()
                             {
-                                info!("Switching to campaign: {}", self.current_campaign_text);
+                                info!("New Campaign: {}", self.new_campaign_text);
                                 if !self
                                     .app_state
-                                    .get_campaign_exists(self.current_campaign_text.clone())
+                                    .get_campaign_exists(self.new_campaign_text.clone())
                                 {
                                     self.app_state
-                                        .create_campaign(self.current_campaign_text.clone());
-                                }
-                                self.app_state
-                                    .set_current_campaign(self.current_campaign_text.clone());
-                                self.current_campaign_text.clear();
-                                let current_campaign =
-                                    self.app_state.get_current_campaign().unwrap();
-                                self.primary_actions = current_campaign.get_primary_actions();
-                                self.secondary_actions = current_campaign.get_secondary_actions();
-                                self.game_state = GameState::default();
-                                for action in &current_campaign.get_special_actions() {
-                                    self.game_state
-                                        .new_special(action.get_name(), action.get_description());
+                                        .create_campaign(self.new_campaign_text.clone());
+                                    self.switch_campaign(self.new_campaign_text.clone());
+                                    self.new_campaign_text.clear();
                                 }
                                 ui.close_menu();
                             }
-                        },
-                    );
-                    if ui.button("Next Battle").clicked() {
-                        self.game_state.next_battle();
-                    }
-                });
-            });
-    }
-
-    fn globals_panel(&mut self, ctx: &egui::Context) {
-        egui::SidePanel::left("globals")
-            .resizable(false)
-            .show(ctx, |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.set_width(125.0);
-                    ui.set_height(725.0);
-
-                    ui.group(|ui| {
-                        ui.label(format!("Turn: {}", self.game_state.get_turn_num()));
-                        if ui.button("Next Turn").clicked() {
-                            self.game_state.next_turn();
-                        }
+                        });
+                        ui.menu_button("Switch", |ui| {
+                            for campaign in self.app_state.get_campaign_names() {
+                                if ui.button(campaign.clone()).clicked() {
+                                    self.switch_campaign(campaign);
+                                    ui.close_menu();
+                                }
+                            }
+                        });
                     });
-
-                    ui.group(|ui| {
-                        ui.label("Add Actions:");
-                        ui.group(|ui| {
-                            ui.label("Add Primary:");
+                    ui.menu_button("Actions", |ui| {
+                        ui.menu_button("Add Primary", |ui| {
                             ui.label("Name:");
                             ui.text_edit_singleline(&mut self.primary_add_text_buffer);
 
@@ -131,10 +98,10 @@ impl GuiGreedApp {
 
                             if ui.button("Add").clicked() {
                                 self.add_new_primary();
+                                ui.close_menu();
                             }
                         });
-                        ui.group(|ui| {
-                            ui.label("Add Secondary:");
+                        ui.menu_button("Add Secondary", |ui| {
                             ui.label("Name:");
                             ui.text_edit_singleline(&mut self.secondary_add_text_buffer);
 
@@ -145,9 +112,7 @@ impl GuiGreedApp {
                                 self.add_new_secondary();
                             }
                         });
-                        ui.group(|ui| {
-                            ui.label("Add Special:");
-
+                        ui.menu_button("Add Special", |ui| {
                             ui.label("Name:");
                             ui.text_edit_singleline(&mut self.special_add_text_buffer);
 
@@ -159,8 +124,26 @@ impl GuiGreedApp {
                             }
                         });
                     });
+                    if ui.button("Next Battle").clicked() {
+                        self.game_state.next_battle();
+                    }
+
+                    if ui.button("Next Turn").clicked() {
+                        self.game_state.next_turn();
+                    }
                 });
             });
+    }
+    fn switch_campaign(&mut self, new_campaign_name: String) {
+        self.app_state.set_current_campaign(new_campaign_name);
+        let current_campaign = self.app_state.get_current_campaign().unwrap();
+        self.primary_actions = current_campaign.get_primary_actions();
+        self.secondary_actions = current_campaign.get_secondary_actions();
+        self.game_state = GameState::default();
+        for action in &current_campaign.get_special_actions() {
+            self.game_state
+                .new_special(action.get_name(), action.get_description());
+        }
     }
 
     fn extras_panel(&mut self, ctx: &egui::Context) {
@@ -433,11 +416,15 @@ impl GuiGreedApp {
 
 impl eframe::App for GuiGreedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        frame.set_window_title("Greed Console");
+        frame.set_window_title(&format!(
+            "Greed Console (Campaign: {}; Turn: {})",
+            self.app_state
+                .get_current_campaign_name()
+                .unwrap_or_else(|| String::from("None")),
+            self.game_state.get_turn_num().to_string()
+        ));
 
         self.menu_panel(ctx);
-
-        self.globals_panel(ctx);
 
         self.extras_panel(ctx);
 
