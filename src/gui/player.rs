@@ -113,9 +113,17 @@ impl GuiGreedApp {
                                 }
                             });
                             ui.menu_button("Remove", |ui| {
-                                for action in &self.primary_actions {
+                                for (idex, action) in
+                                    self.primary_actions.clone().iter().enumerate()
+                                {
                                     if ui.button(action.get_name()).clicked() {
                                         info!("Removing Primary Action: {}", action.get_name());
+                                        self.primary_actions.remove(idex);
+                                        if let Some(campaign) =
+                                            self.app_state.get_current_campaign_mut()
+                                        {
+                                            campaign.remove_primary_action(idex);
+                                        }
                                     }
                                 }
                             });
@@ -135,9 +143,17 @@ impl GuiGreedApp {
                                 }
                             });
                             ui.menu_button("Remove", |ui| {
-                                for action in &self.secondary_actions {
+                                for (idex, action) in
+                                    self.secondary_actions.clone().iter().enumerate()
+                                {
                                     if ui.button(action.get_name()).clicked() {
-                                        info!("Removing Secondary Action: {}", action.get_name());
+                                        info!("Removing Secondaary Action: {}", action.get_name());
+                                        self.secondary_actions.remove(idex);
+                                        if let Some(campaign) =
+                                            self.app_state.get_current_campaign_mut()
+                                        {
+                                            campaign.remove_secondary_action(idex);
+                                        }
                                     }
                                 }
                             });
@@ -157,14 +173,21 @@ impl GuiGreedApp {
                                 }
                             });
                             ui.menu_button("Remove", |ui| {
-                                for action in &self
+                                for (idex, action) in self
                                     .app_state
                                     .get_current_campaign()
                                     .unwrap()
                                     .get_special_actions()
+                                    .iter()
+                                    .enumerate()
                                 {
                                     if ui.button(action.get_name()).clicked() {
                                         info!("Removing Special Action: {}", action.get_name());
+                                        if let Some(campaign) =
+                                            self.app_state.get_current_campaign_mut()
+                                        {
+                                            campaign.remove_special_action(idex);
+                                        }
                                     }
                                 }
                             });

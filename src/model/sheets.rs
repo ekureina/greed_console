@@ -33,6 +33,18 @@ impl Character {
     pub fn get_special_actions(&self) -> Vec<SpecialAction> {
         self.special_actions.clone()
     }
+
+    pub fn remove_primary_action(&mut self, index: usize) {
+        self.primary_actions.remove(index);
+    }
+
+    pub fn remove_secondary_action(&mut self, index: usize) {
+        self.secondary_actions.remove(index);
+    }
+
+    pub fn remove_special_action(&mut self, index: usize) {
+        self.special_actions.remove(index);
+    }
 }
 
 #[cfg(test)]
