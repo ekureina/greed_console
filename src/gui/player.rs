@@ -51,6 +51,60 @@ impl GuiGreedApp {
         }
     }
 
+    fn stats_panel(&mut self, ui: &mut egui::Ui) {
+        ui.label(format!(
+            "Campaign: {}",
+            self.app_state
+                .get_current_campaign_name()
+                .unwrap_or_else(|| String::from("None"))
+        ));
+        ui.label(format!("Round Number: {}", self.game_state.get_round_num()));
+        ui.label(format!("Turn: {}", self.game_state.get_turn_side()));
+        ui.menu_button(format!("Power: {}", self.game_state.get_power()), |ui| {
+            if ui.button("Increment Power for Turn").clicked() {
+                self.game_state.change_power_for_turn(1);
+            }
+            if ui.button("Decrement Power for Turn").clicked() {
+                self.game_state.change_power_for_turn(-1);
+            }
+            if ui.button("Increment Power for Round").clicked() {
+                self.game_state.change_power_for_round(1);
+            }
+            if ui.button("Decrement Power for Round").clicked() {
+                self.game_state.change_power_for_round(-1);
+            }
+            if ui.button("Increment Power for Battle").clicked() {
+                self.game_state.change_power_for_battle(1);
+            }
+            if ui.button("Decrement Power for Battle").clicked() {
+                self.game_state.change_power_for_battle(-1);
+            }
+        });
+        ui.menu_button(
+            format!("Defense: {}", self.game_state.get_defense()),
+            |ui| {
+                if ui.button("Increment Defense for Turn").clicked() {
+                    self.game_state.change_defense_for_turn(1);
+                }
+                if ui.button("Decrement Defense for Turn").clicked() {
+                    self.game_state.change_defense_for_turn(-1);
+                }
+                if ui.button("Increment Defense for Round").clicked() {
+                    self.game_state.change_defense_for_round(1);
+                }
+                if ui.button("Decrement Defense for Round").clicked() {
+                    self.game_state.change_defense_for_round(-1);
+                }
+                if ui.button("Increment Defense for Battle").clicked() {
+                    self.game_state.change_defense_for_battle(1);
+                }
+                if ui.button("Decrement Defense for Battle").clicked() {
+                    self.game_state.change_defense_for_battle(-1);
+                }
+            },
+        );
+    }
+
     fn menu_panel(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("menu")
             .resizable(false)
@@ -229,6 +283,8 @@ impl GuiGreedApp {
                     if ui.button("Next Turn").clicked() {
                         self.game_state.next_turn();
                     }
+
+                    ui.menu_button("Stats", |ui| self.stats_panel(ui));
                 });
             });
     }
@@ -412,13 +468,7 @@ impl GuiGreedApp {
 
 impl eframe::App for GuiGreedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        frame.set_window_title(&format!(
-            "Greed Console (Campaign: {}; Turn: {})",
-            self.app_state
-                .get_current_campaign_name()
-                .unwrap_or_else(|| String::from("None")),
-            self.game_state.get_turn_num().to_string()
-        ));
+        frame.set_window_title("Greed Console");
 
         self.menu_panel(ctx);
 
