@@ -1,5 +1,6 @@
 use super::state::AppState;
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
+use crate::model::classes::Class;
 use crate::model::game_state::GameState;
 
 use eframe::egui;
@@ -22,10 +23,18 @@ pub struct GuiGreedApp {
     secondary_add_description_text_buffer: String,
     special_add_text_buffer: String,
     special_add_description_text_buffer: String,
+    races: Vec<Class>,
+    classes: Vec<Class>,
+    character_race: Option<Class>,
+    character_classes: Vec<Class>,
 }
 
 impl GuiGreedApp {
-    pub fn new(cc: &eframe::CreationContext) -> GuiGreedApp {
+    pub fn new(
+        cc: &eframe::CreationContext,
+        races: Vec<Class>,
+        classes: Vec<Class>,
+    ) -> GuiGreedApp {
         info!("Starting up app!");
         let app_state = if let Some(storage) = cc.storage {
             eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
@@ -41,12 +50,39 @@ impl GuiGreedApp {
         for action in &character.get_special_actions() {
             game_state.new_special(action.get_name(), action.get_description());
         }
+
+        let mut primary_actions = character.get_primary_actions();
+        let mut secondary_actions = character.get_secondary_actions();
+
+        if let Some(character_race) = character.get_race() {
+            if let Some(race_info) = races.iter().find(|race| race.get_name() == character_race) {
+                primary_actions.push(race_info.get_primary_action());
+                secondary_actions.push(race_info.get_secondary_action());
+                let race_special = race_info.get_special_action();
+                game_state.new_special(race_special.get_name(), race_special.get_description());
+            }
+        }
+
+        character.get_classes().iter().for_each(|class_name| {
+            if let Some(class_info) = classes
+                .iter()
+                .find(|class| class.get_name() == class_name.clone())
+            {
+                primary_actions.push(class_info.get_primary_action());
+                secondary_actions.push(class_info.get_secondary_action());
+                let class_special = class_info.get_special_action();
+                game_state.new_special(class_special.get_name(), class_special.get_description());
+            }
+        });
+
         GuiGreedApp {
             game_state,
             app_state,
             new_campaign_text: String::default(),
-            primary_actions: character.get_primary_actions(),
-            secondary_actions: character.get_secondary_actions(),
+            primary_actions,
+            secondary_actions,
+            races,
+            classes,
             ..Default::default()
         }
     }
@@ -149,133 +185,7 @@ impl GuiGreedApp {
                             }
                         })
                     });
-                    ui.menu_button("Actions", |ui| {
-                        ui.menu_button("Primary", |ui| {
-                            ui.menu_button("Add", |ui| {
-                                ui.label("Name:");
-                                ui.text_edit_singleline(&mut self.primary_add_text_buffer);
-
-                                ui.label("Description:");
-                                ui.text_edit_multiline(
-                                    &mut self.primary_add_description_text_buffer,
-                                );
-
-                                if ui.button("Add").clicked() {
-                                    self.add_new_primary();
-                                    ui.close_menu();
-                                }
-                            });
-                            ui.menu_button("Remove", |ui| {
-                                for (idex, action) in
-                                    self.primary_actions.clone().iter().enumerate()
-                                {
-                                    if ui.button(action.get_name()).clicked() {
-                                        info!("Removing Primary Action: {}", action.get_name());
-                                        self.primary_actions.remove(idex);
-                                        if let Some(campaign) =
-                                            self.app_state.get_current_campaign_mut()
-                                        {
-                                            campaign.remove_primary_action(idex);
-                                        }
-                                    }
-                                }
-                            });
-                        });
-                        ui.menu_button("Secondary", |ui| {
-                            ui.menu_button("Add", |ui| {
-                                ui.label("Name:");
-                                ui.text_edit_singleline(&mut self.secondary_add_text_buffer);
-
-                                ui.label("Description:");
-                                ui.text_edit_multiline(
-                                    &mut self.secondary_add_description_text_buffer,
-                                );
-
-                                if ui.button("Add").clicked() {
-                                    self.add_new_secondary();
-                                }
-                            });
-                            ui.menu_button("Remove", |ui| {
-                                for (idex, action) in
-                                    self.secondary_actions.clone().iter().enumerate()
-                                {
-                                    if ui.button(action.get_name()).clicked() {
-                                        info!("Removing Secondaary Action: {}", action.get_name());
-                                        self.secondary_actions.remove(idex);
-                                        if let Some(campaign) =
-                                            self.app_state.get_current_campaign_mut()
-                                        {
-                                            campaign.remove_secondary_action(idex);
-                                        }
-                                    }
-                                }
-                            });
-                            if ui.button("Refresh via Other Player Target").clicked() {
-                                self.game_state.extra_secondary();
-                            }
-                        });
-                        ui.menu_button("Special", |ui| {
-                            ui.menu_button("Add", |ui| {
-                                ui.label("Name:");
-                                ui.text_edit_singleline(&mut self.special_add_text_buffer);
-
-                                ui.label("Description:");
-                                ui.text_edit_multiline(
-                                    &mut self.special_add_description_text_buffer,
-                                );
-
-                                if ui.button("Add").clicked() {
-                                    self.add_new_special();
-                                }
-                            });
-                            ui.menu_button("Remove", |ui| {
-                                for (idex, action) in self
-                                    .app_state
-                                    .get_current_campaign()
-                                    .unwrap()
-                                    .get_special_actions()
-                                    .iter()
-                                    .enumerate()
-                                {
-                                    if ui.button(action.get_name()).clicked() {
-                                        info!("Removing Special Action: {}", action.get_name());
-                                        if let Some(campaign) =
-                                            self.app_state.get_current_campaign_mut()
-                                        {
-                                            self.game_state.remove_special_action(idex);
-                                            campaign.remove_special_action(idex);
-                                        }
-                                    }
-                                }
-                            });
-                            if self
-                                .game_state
-                                .get_special_actions()
-                                .iter()
-                                .any(|action| !action.is_usable())
-                            {
-                                ui.menu_button("Refresh", |ui| {
-                                    for action in self.game_state.get_special_actions().clone() {
-                                        if !action.is_usable()
-                                            && ui.button(action.get_name()).clicked()
-                                        {
-                                            self.refresh_special(action.get_name());
-                                        }
-                                    }
-                                });
-                            }
-                            if self
-                                .game_state
-                                .get_special_actions()
-                                .iter()
-                                .any(SpecialAction::is_usable)
-                            {
-                                if ui.button("Exhaust").clicked() {
-                                    self.game_state.exhaust_specials();
-                                }
-                            }
-                        });
-                    });
+                    ui.menu_button("Actions", |ui| self.actions_menu(ui));
                     if ui.button("Next Battle").clicked() {
                         self.game_state.next_battle();
                     }
@@ -288,6 +198,116 @@ impl GuiGreedApp {
                     ui.hyperlink_to("Greed Rulset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
                 });
             });
+    }
+
+    fn actions_menu(&mut self, ui: &mut egui::Ui) {
+        ui.menu_button("Primary", |ui| {
+            ui.menu_button("Add", |ui| {
+                ui.label("Name:");
+                ui.text_edit_singleline(&mut self.primary_add_text_buffer);
+
+                ui.label("Description:");
+                ui.text_edit_multiline(&mut self.primary_add_description_text_buffer);
+
+                if ui.button("Add").clicked() {
+                    self.add_new_primary();
+                    ui.close_menu();
+                }
+            });
+            ui.menu_button("Remove", |ui| {
+                for (idex, action) in self.primary_actions.clone().iter().enumerate() {
+                    if ui.button(action.get_name()).clicked() {
+                        info!("Removing Primary Action: {}", action.get_name());
+                        self.primary_actions.remove(idex);
+                        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+                            campaign.remove_primary_action(idex);
+                        }
+                    }
+                }
+            });
+        });
+        ui.menu_button("Secondary", |ui| {
+            ui.menu_button("Add", |ui| {
+                ui.label("Name:");
+                ui.text_edit_singleline(&mut self.secondary_add_text_buffer);
+
+                ui.label("Description:");
+                ui.text_edit_multiline(&mut self.secondary_add_description_text_buffer);
+
+                if ui.button("Add").clicked() {
+                    self.add_new_secondary();
+                }
+            });
+            ui.menu_button("Remove", |ui| {
+                for (idex, action) in self.secondary_actions.clone().iter().enumerate() {
+                    if ui.button(action.get_name()).clicked() {
+                        info!("Removing Secondaary Action: {}", action.get_name());
+                        self.secondary_actions.remove(idex);
+                        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+                            campaign.remove_secondary_action(idex);
+                        }
+                    }
+                }
+            });
+            if ui.button("Refresh via Other Player Target").clicked() {
+                self.game_state.extra_secondary();
+            }
+        });
+        ui.menu_button("Special", |ui| {
+            ui.menu_button("Add", |ui| {
+                ui.label("Name:");
+                ui.text_edit_singleline(&mut self.special_add_text_buffer);
+
+                ui.label("Description:");
+                ui.text_edit_multiline(&mut self.special_add_description_text_buffer);
+
+                if ui.button("Add").clicked() {
+                    self.add_new_special();
+                }
+            });
+            ui.menu_button("Remove", |ui| {
+                for (idex, action) in self
+                    .app_state
+                    .get_current_campaign()
+                    .unwrap()
+                    .get_special_actions()
+                    .iter()
+                    .enumerate()
+                {
+                    if ui.button(action.get_name()).clicked() {
+                        info!("Removing Special Action: {}", action.get_name());
+                        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+                            self.game_state.remove_special_action(idex);
+                            campaign.remove_special_action(idex);
+                        }
+                    }
+                }
+            });
+            if self
+                .game_state
+                .get_special_actions()
+                .iter()
+                .any(|action| !action.is_usable())
+            {
+                ui.menu_button("Refresh", |ui| {
+                    for action in self.game_state.get_special_actions().clone() {
+                        if !action.is_usable() && ui.button(action.get_name()).clicked() {
+                            self.refresh_special(action.get_name());
+                        }
+                    }
+                });
+            }
+            if self
+                .game_state
+                .get_special_actions()
+                .iter()
+                .any(SpecialAction::is_usable)
+            {
+                if ui.button("Exhaust").clicked() {
+                    self.game_state.exhaust_specials();
+                }
+            }
+        });
     }
 
     fn switch_campaign(&mut self, new_campaign_name: String) {

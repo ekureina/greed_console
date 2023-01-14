@@ -1,6 +1,6 @@
 [package]
 name = "greed_console"
-version = "0.3.1"
+version = "0.4.0+prerelease"
 edition = "2021"
 authors = ["Claire Moore <kurennon@gmail.com>"]
 rust-version = "1.65"
@@ -17,3 +17,5 @@ log = "0.4.17"
 env_logger = "0.9.3"
 serde = { version = "1.0", features = ["derive"] }
 ron = "0.8"
+tokio = { version = "1", features = ["full"] }
+google-docs1 = "3.1.0"

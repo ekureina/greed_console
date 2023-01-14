@@ -7,6 +7,8 @@ pub struct Character {
     primary_actions: Vec<PrimaryAction>,
     secondary_actions: Vec<SecondaryAction>,
     special_actions: Vec<SpecialAction>,
+    race: Option<String>,
+    classes: Vec<String>,
 }
 
 impl Character {
@@ -44,6 +46,14 @@ impl Character {
 
     pub fn remove_special_action(&mut self, index: usize) {
         self.special_actions.remove(index);
+    }
+
+    pub fn get_race(&self) -> Option<String> {
+        self.race.clone()
+    }
+
+    pub fn get_classes(&self) -> Vec<String> {
+        self.classes.clone()
     }
 }
 
