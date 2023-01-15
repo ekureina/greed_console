@@ -214,7 +214,6 @@ pub async fn get_races_and_classes() -> (Vec<Class>, Vec<Class>) {
 
     let mut classes = Vec::<Class>::new();
     while line.is_some() {
-        println!("{}", line.as_ref().unwrap().clone());
         let class = get_class(line.unwrap(), lines.by_ref());
         classes.push(class);
         line = lines.by_ref().skip_while(|line| !line.contains("(")).next();

@@ -312,15 +312,18 @@ impl GuiGreedApp {
 
     fn classes_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("Add", |ui| {
-            for class in &self.classes {
-                if !self.character_classes.contains(class) {
-                    if ui.button(class.get_name()).clicked() {
-                        self.character_classes.push(class.clone());
-                        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
-                            campaign.add_class(class.get_name());
+            let mut classes_to_add = vec![];
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                for class in &self.classes {
+                    if !self.character_classes.contains(class) {
+                        if ui.button(class.get_name()).clicked() {
+                            classes_to_add.push(class.clone());
                         }
                     }
                 }
+            });
+            for class in classes_to_add {
+                self.add_new_class(class);
             }
         });
     }
@@ -495,6 +498,18 @@ impl GuiGreedApp {
             self.special_add_text_buffer.clear();
             self.special_add_description_text_buffer.clear();
         }
+    }
+
+    fn add_new_class(&mut self, class: Class) {
+        self.primary_actions.push(class.get_primary_action());
+        self.secondary_actions.push(class.get_secondary_action());
+        let class_special = class.get_special_action();
+        self.game_state
+            .new_special(class_special.get_name(), class_special.get_description());
+        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+            campaign.add_class(class.get_name().clone());
+        }
+        self.character_classes.push(class);
     }
 
     fn refresh_special(&mut self, special_name: String) {
