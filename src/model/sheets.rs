@@ -59,7 +59,16 @@ impl Character {
 
         let primary_actions = character_race
             .clone()
-            .map_or_else(|| vec![], |race| vec![race.get_primary_action()])
+            .map_or_else(
+                || vec![],
+                |race| {
+                    if race.get_name() == "Human" {
+                        vec![]
+                    } else {
+                        vec![race.get_primary_action()]
+                    }
+                },
+            )
             .into_iter()
             .chain(
                 character_classes
@@ -71,7 +80,16 @@ impl Character {
 
         let secondary_actions = character_race
             .clone()
-            .map_or_else(|| vec![], |race| vec![race.get_secondary_action()])
+            .map_or_else(
+                || vec![],
+                |race| {
+                    if race.get_name() == "Human" {
+                        vec![]
+                    } else {
+                        vec![race.get_secondary_action()]
+                    }
+                },
+            )
             .into_iter()
             .chain(
                 character_classes
@@ -82,7 +100,16 @@ impl Character {
             .collect();
 
         let special_actions = character_race
-            .map_or_else(|| vec![], |race| vec![race.get_special_action()])
+            .map_or_else(
+                || vec![],
+                |race| {
+                    if race.get_name() == "Human" {
+                        vec![]
+                    } else {
+                        vec![race.get_special_action()]
+                    }
+                },
+            )
             .into_iter()
             .chain(
                 character_classes
