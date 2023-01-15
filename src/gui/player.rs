@@ -23,18 +23,13 @@ pub struct GuiGreedApp {
     secondary_add_description_text_buffer: String,
     special_add_text_buffer: String,
     special_add_description_text_buffer: String,
-    races: Vec<Class>,
-    classes: Vec<Class>,
+    class_cache: ClassCache,
     character_race: Option<Class>,
     character_classes: Vec<Class>,
 }
 
 impl GuiGreedApp {
-    pub fn new(
-        cc: &eframe::CreationContext,
-        races: Vec<Class>,
-        classes: Vec<Class>,
-    ) -> GuiGreedApp {
+    pub fn new(cc: &eframe::CreationContext, class_cache: ClassCache) -> GuiGreedApp {
         info!("Starting up app!");
         let app_state = if let Some(storage) = cc.storage {
             eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
@@ -49,7 +44,8 @@ impl GuiGreedApp {
         let character_race = character
             .get_race()
             .map(|race_name| {
-                races
+                class_cache
+                    .get_races()
                     .iter()
                     .find(|race| race.get_name() == race_name.clone())
                     .map(|race| race.clone())
@@ -60,7 +56,8 @@ impl GuiGreedApp {
             .get_classes()
             .iter()
             .filter_map(|class_name| {
-                classes
+                class_cache
+                    .get_classes()
                     .iter()
                     .find(|class| class.get_name() == class_name.clone())
                     .map(|class| class.clone())
@@ -110,8 +107,7 @@ impl GuiGreedApp {
             new_campaign_text: String::default(),
             primary_actions,
             secondary_actions,
-            races,
-            classes,
+            class_cache,
             character_race,
             character_classes,
             ..Default::default()
@@ -217,7 +213,7 @@ impl GuiGreedApp {
                         });
                         ui.menu_button("Race", |ui| {
                             let old_race = self.character_race.clone();
-                            for race in &self.races {
+                            for race in &self.class_cache.get_races() {
                                 ui.radio_value(&mut self.character_race, Some(race.clone()), race.get_name());
                             }
                             if self.character_race != old_race {
@@ -354,7 +350,7 @@ impl GuiGreedApp {
     }
 
     fn classes_menu(&mut self, ui: &mut egui::Ui) {
-        if self.character_classes.len() != self.classes.len() {
+        if self.character_classes.len() != self.class_cache.get_classes().len() {
             ui.menu_button("Add", |ui| {
                 let mut classes_to_add = vec![];
                 let current_class_names = self
@@ -364,7 +360,7 @@ impl GuiGreedApp {
                     .collect::<Vec<String>>();
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    for class in &self.classes {
+                    for class in &self.class_cache.get_classes() {
                         if !self.character_classes.contains(class)
                             && class.get_class_available(current_class_names.clone())
                         {
@@ -661,11 +657,7 @@ impl eframe::App for GuiGreedApp {
         info!("Saving! AppState: {:?}", self.app_state);
         eframe::set_value(storage, eframe::APP_KEY, &self.app_state);
         if let None = eframe::get_value::<ClassCache>(storage, "class_cache") {
-            eframe::set_value(
-                storage,
-                "class_cache",
-                &ClassCache::new(self.races.clone(), self.classes.clone()),
-            );
+            eframe::set_value(storage, "class_cache", &self.class_cache);
         }
     }
 

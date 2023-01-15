@@ -51,7 +51,7 @@ impl Class {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ClassCache {
     races: Vec<Class>,
     classes: Vec<Class>,
