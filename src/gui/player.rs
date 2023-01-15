@@ -46,11 +46,6 @@ impl GuiGreedApp {
             .map(Clone::clone)
             .unwrap_or_default();
 
-        let mut game_state = GameState::default();
-        for action in &character.get_special_actions() {
-            game_state.new_special(action.get_name(), action.get_description());
-        }
-
         let character_race = character
             .get_race()
             .map(|race_name| {
@@ -70,14 +65,51 @@ impl GuiGreedApp {
                     .find(|class| class.get_name() == class_name.clone())
                     .map(|class| class.clone())
             })
+            .collect::<Vec<Class>>();
+
+        let primary_actions = character_race
+            .clone()
+            .map_or_else(|| vec![], |race| vec![race.get_primary_action()])
+            .into_iter()
+            .chain(
+                character_classes
+                    .iter()
+                    .map(|class| class.get_primary_action()),
+            )
+            .chain(character.get_primary_actions())
             .collect();
+
+        let secondary_actions = character_race
+            .clone()
+            .map_or_else(|| vec![], |race| vec![race.get_secondary_action()])
+            .into_iter()
+            .chain(
+                character_classes
+                    .iter()
+                    .map(|class| class.get_secondary_action()),
+            )
+            .chain(character.get_secondary_actions())
+            .collect();
+
+        let mut game_state = GameState::default();
+        if let Some(race) = character_race.clone() {
+            let race_special = race.get_special_action();
+            game_state.new_special(race_special.get_name(), race_special.get_description());
+        }
+        for class in &character_classes {
+            let class_special = class.get_special_action();
+            game_state.new_special(class_special.get_name(), class_special.get_description());
+        }
+        for action in &character.get_special_actions() {
+            game_state.new_special(action.get_name(), action.get_description());
+        }
 
         GuiGreedApp {
             game_state,
             app_state,
             new_campaign_text: String::default(),
-            primary_actions: character.get_primary_actions(),
-            secondary_actions: character.get_secondary_actions(),
+            primary_actions,
+            secondary_actions,
             races,
             classes,
             character_race,
