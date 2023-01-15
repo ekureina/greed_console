@@ -1,6 +1,6 @@
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Class {
     name: String,
     primary_action: PrimaryAction,

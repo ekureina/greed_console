@@ -51,38 +51,37 @@ impl GuiGreedApp {
             game_state.new_special(action.get_name(), action.get_description());
         }
 
-        let mut primary_actions = character.get_primary_actions();
-        let mut secondary_actions = character.get_secondary_actions();
+        let character_race = character
+            .get_race()
+            .map(|race_name| {
+                races
+                    .iter()
+                    .find(|race| race.get_name() == race_name.clone())
+                    .map(|race| race.clone())
+            })
+            .flatten();
 
-        if let Some(character_race) = character.get_race() {
-            if let Some(race_info) = races.iter().find(|race| race.get_name() == character_race) {
-                primary_actions.push(race_info.get_primary_action());
-                secondary_actions.push(race_info.get_secondary_action());
-                let race_special = race_info.get_special_action();
-                game_state.new_special(race_special.get_name(), race_special.get_description());
-            }
-        }
-
-        character.get_classes().iter().for_each(|class_name| {
-            if let Some(class_info) = classes
-                .iter()
-                .find(|class| class.get_name() == class_name.clone())
-            {
-                primary_actions.push(class_info.get_primary_action());
-                secondary_actions.push(class_info.get_secondary_action());
-                let class_special = class_info.get_special_action();
-                game_state.new_special(class_special.get_name(), class_special.get_description());
-            }
-        });
+        let character_classes = character
+            .get_classes()
+            .iter()
+            .filter_map(|class_name| {
+                classes
+                    .iter()
+                    .find(|class| class.get_name() == class_name.clone())
+                    .map(|class| class.clone())
+            })
+            .collect();
 
         GuiGreedApp {
             game_state,
             app_state,
             new_campaign_text: String::default(),
-            primary_actions,
-            secondary_actions,
+            primary_actions: character.get_primary_actions(),
+            secondary_actions: character.get_secondary_actions(),
             races,
             classes,
+            character_race,
+            character_classes,
             ..Default::default()
         }
     }
@@ -186,6 +185,7 @@ impl GuiGreedApp {
                         })
                     });
                     ui.menu_button("Actions", |ui| self.actions_menu(ui));
+                    ui.menu_button("Classes", |ui| self.classes_menu(ui));
                     if ui.button("Next Battle").clicked() {
                         self.game_state.next_battle();
                     }
@@ -305,6 +305,21 @@ impl GuiGreedApp {
             {
                 if ui.button("Exhaust").clicked() {
                     self.game_state.exhaust_specials();
+                }
+            }
+        });
+    }
+
+    fn classes_menu(&mut self, ui: &mut egui::Ui) {
+        ui.menu_button("Add", |ui| {
+            for class in &self.classes {
+                if !self.character_classes.contains(class) {
+                    if ui.button(class.get_name()).clicked() {
+                        self.character_classes.push(class.clone());
+                        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+                            campaign.add_class(class.get_name());
+                        }
+                    }
                 }
             }
         });

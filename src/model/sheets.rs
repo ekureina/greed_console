@@ -55,6 +55,10 @@ impl Character {
     pub fn get_classes(&self) -> Vec<String> {
         self.classes.clone()
     }
+
+    pub fn add_class<N: Into<String>>(&mut self, class_name: N) {
+        self.classes.push(class_name.into());
+    }
 }
 
 #[cfg(test)]
