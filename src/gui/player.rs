@@ -326,6 +326,15 @@ impl GuiGreedApp {
                 self.add_new_class(class);
             }
         });
+        ui.menu_button("Remove", |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                for class in self.character_classes.clone() {
+                    if ui.button(class.get_name()).clicked() {
+                        self.remove_class(class);
+                    }
+                }
+            });
+        });
     }
 
     fn switch_campaign(&mut self, new_campaign_name: String) {
@@ -510,6 +519,41 @@ impl GuiGreedApp {
             campaign.add_class(class.get_name().clone());
         }
         self.character_classes.push(class);
+    }
+
+    fn remove_class(&mut self, class: Class) {
+        if let Some(primary_index) = self
+            .primary_actions
+            .iter()
+            .position(|action| action.clone() == class.get_primary_action())
+        {
+            self.primary_actions.remove(primary_index);
+        }
+        if let Some(secondary_index) = self
+            .secondary_actions
+            .iter()
+            .position(|action| action.clone() == class.get_secondary_action())
+        {
+            self.secondary_actions.remove(secondary_index);
+        }
+        if let Some(special_index) = self
+            .game_state
+            .get_special_actions()
+            .iter()
+            .position(|action| action.clone() == class.get_special_action())
+        {
+            self.game_state.remove_special_action(special_index);
+        }
+        if let Some(class_index) = self
+            .character_classes
+            .iter()
+            .position(|stored_class| stored_class.clone() == class)
+        {
+            self.character_classes.remove(class_index);
+        }
+        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+            campaign.remove_class(class.get_name());
+        }
     }
 
     fn refresh_special(&mut self, special_name: String) {

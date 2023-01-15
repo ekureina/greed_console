@@ -59,6 +59,18 @@ impl Character {
     pub fn add_class<N: Into<String>>(&mut self, class_name: N) {
         self.classes.push(class_name.into());
     }
+
+    pub fn remove_class<N: Into<String>>(&mut self, class_name: N) {
+        let class_name_string = class_name.into();
+
+        if let Some(class_position) = self
+            .classes
+            .iter()
+            .position(|class| class_name_string == class.clone())
+        {
+            self.classes.remove(class_position);
+        }
+    }
 }
 
 #[cfg(test)]
