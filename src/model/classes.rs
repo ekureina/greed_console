@@ -1,6 +1,8 @@
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Class {
     name: String,
     primary_action: PrimaryAction,
@@ -46,5 +48,25 @@ impl Class {
         self.class_requirements
             .iter()
             .all(|class_requirement| current_class_names.contains(class_requirement))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ClassCache {
+    races: Vec<Class>,
+    classes: Vec<Class>,
+}
+
+impl ClassCache {
+    pub fn new(races: Vec<Class>, classes: Vec<Class>) -> ClassCache {
+        ClassCache { races, classes }
+    }
+
+    pub fn get_races(&self) -> Vec<Class> {
+        self.races.clone()
+    }
+
+    pub fn get_classes(&self) -> Vec<Class> {
+        self.classes.clone()
     }
 }

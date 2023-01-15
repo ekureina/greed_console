@@ -6,6 +6,7 @@
 use crate::gui::player;
 
 use eframe::NativeOptions;
+use model::classes::ClassCache;
 
 mod google;
 mod gui;
@@ -16,16 +17,22 @@ fn main() {
 
     let native_options = NativeOptions::default();
 
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-
-    let (races, classes) = rt.block_on(google::get_races_and_classes());
-
     eframe::run_native(
         "Greed Console",
         native_options,
-        Box::new(|cc| Box::new(player::GuiGreedApp::new(cc, races, classes))),
+        Box::new(|cc| {
+            let (races, classes) = if let Some(cache) =
+                eframe::get_value::<ClassCache>(cc.storage.unwrap(), "class_cache")
+            {
+                (cache.get_races(), cache.get_classes())
+            } else {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap();
+                rt.block_on(google::get_races_and_classes())
+            };
+            Box::new(player::GuiGreedApp::new(cc, races, classes))
+        }),
     );
 }

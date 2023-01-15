@@ -1,6 +1,6 @@
 use super::state::AppState;
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
-use crate::model::classes::Class;
+use crate::model::classes::{Class, ClassCache};
 use crate::model::game_state::GameState;
 
 use eframe::egui;
@@ -660,6 +660,13 @@ impl eframe::App for GuiGreedApp {
     fn save(&mut self, storage: &mut dyn Storage) {
         info!("Saving! AppState: {:?}", self.app_state);
         eframe::set_value(storage, eframe::APP_KEY, &self.app_state);
+        if let None = eframe::get_value::<ClassCache>(storage, "class_cache") {
+            eframe::set_value(
+                storage,
+                "class_cache",
+                &ClassCache::new(self.races.clone(), self.classes.clone()),
+            );
+        }
     }
 
     fn auto_save_interval(&self) -> Duration {
