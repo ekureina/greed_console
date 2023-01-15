@@ -5,16 +5,14 @@ use google_docs1::api::Document;
 use google_docs1::oauth2::{self, ServiceAccountAuthenticator};
 use google_docs1::{hyper, hyper_rustls, Docs};
 
-async fn get_creds() -> oauth2::ServiceAccountKey {
-    oauth2::read_service_account_key("credentials.json")
-        .await
-        .unwrap()
+fn get_creds() -> oauth2::ServiceAccountKey {
+    oauth2::parse_service_account_key(include_bytes!("../../credentials.json")).unwrap()
 }
 
 async fn get_authenticator(
 ) -> oauth2::authenticator::Authenticator<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>>
 {
-    let creds = get_creds().await;
+    let creds = get_creds();
 
     ServiceAccountAuthenticator::builder(creds)
         .build()
