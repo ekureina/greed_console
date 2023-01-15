@@ -6,6 +6,7 @@ pub struct Class {
     primary_action: PrimaryAction,
     secondary_action: SecondaryAction,
     special_action: SpecialAction,
+    class_requirements: Vec<String>,
 }
 
 impl Class {
@@ -14,12 +15,14 @@ impl Class {
         primary_action: PrimaryAction,
         secondary_action: SecondaryAction,
         special_action: SpecialAction,
+        class_requirements: Vec<String>,
     ) -> Class {
         Class {
             name: name.into(),
             primary_action,
             secondary_action,
             special_action,
+            class_requirements,
         }
     }
 

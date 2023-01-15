@@ -49,6 +49,18 @@ fn get_class(first_line: String, mut paragraphs: impl Iterator<Item = String>) -
     let class_name = first_line.split("(").collect::<Vec<&str>>()[0]
         .trim()
         .to_string();
+    let class_requirements = if first_line.contains("Req:") {
+        first_line.split("Req:").collect::<Vec<&str>>()[1]
+            .trim()
+            .split(",")
+            .collect::<Vec<&str>>()
+            .into_iter()
+            .map(&str::to_string)
+            .collect()
+    } else {
+        vec![]
+    };
+
     paragraphs.next().unwrap();
     let _ = paragraphs.next().unwrap().trim_end().to_owned();
     let _ = paragraphs
@@ -95,6 +107,7 @@ fn get_class(first_line: String, mut paragraphs: impl Iterator<Item = String>) -
         PrimaryAction::new(primary_name, primary_description),
         SecondaryAction::new(secondary_name, secondary_description),
         SpecialAction::new(special_name, special_description),
+        class_requirements,
     )
 }
 
@@ -147,6 +160,7 @@ fn get_race(first_line: String, mut paragraphs: impl Iterator<Item = String>) ->
             PrimaryAction::new(primary_name, primary_description),
             SecondaryAction::new(secondary_name, secondary_description),
             SpecialAction::new(special_name, special_description),
+            vec![],
         )
     } else {
         Class::new(
@@ -154,6 +168,7 @@ fn get_race(first_line: String, mut paragraphs: impl Iterator<Item = String>) ->
             PrimaryAction::new("".to_owned(), "".to_owned()),
             SecondaryAction::new("".to_owned(), "".to_owned()),
             SpecialAction::new("".to_owned(), "".to_owned()),
+            vec![],
         )
     }
 }
