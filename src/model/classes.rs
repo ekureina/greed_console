@@ -41,4 +41,10 @@ impl Class {
     pub fn get_special_action(&self) -> SpecialAction {
         self.special_action.clone()
     }
+
+    pub fn get_class_available(&self, current_class_names: Vec<String>) -> bool {
+        self.class_requirements
+            .iter()
+            .all(|class_requirement| current_class_names.contains(class_requirement))
+    }
 }

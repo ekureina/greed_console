@@ -55,7 +55,7 @@ fn get_class(first_line: String, mut paragraphs: impl Iterator<Item = String>) -
             .split(",")
             .collect::<Vec<&str>>()
             .into_iter()
-            .map(&str::to_string)
+            .map(|requirement_class| requirement_class.trim().to_string())
             .collect()
     } else {
         vec![]

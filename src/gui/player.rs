@@ -311,21 +311,31 @@ impl GuiGreedApp {
     }
 
     fn classes_menu(&mut self, ui: &mut egui::Ui) {
-        ui.menu_button("Add", |ui| {
-            let mut classes_to_add = vec![];
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                for class in &self.classes {
-                    if !self.character_classes.contains(class) {
-                        if ui.button(class.get_name()).clicked() {
-                            classes_to_add.push(class.clone());
+        if self.character_classes.len() != self.classes.len() {
+            ui.menu_button("Add", |ui| {
+                let mut classes_to_add = vec![];
+                let current_class_names = self
+                    .character_classes
+                    .iter()
+                    .map(|class| class.get_name().clone())
+                    .collect::<Vec<String>>();
+
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for class in &self.classes {
+                        if !self.character_classes.contains(class)
+                            && class.get_class_available(current_class_names.clone())
+                        {
+                            if ui.button(class.get_name()).clicked() {
+                                classes_to_add.push(class.clone());
+                            }
                         }
                     }
+                });
+                for class in classes_to_add {
+                    self.add_new_class(class);
                 }
             });
-            for class in classes_to_add {
-                self.add_new_class(class);
-            }
-        });
+        }
         ui.menu_button("Remove", |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for class in self.character_classes.clone() {
