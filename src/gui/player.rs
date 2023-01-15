@@ -130,7 +130,7 @@ impl GuiGreedApp {
         egui::TopBottomPanel::top("menu")
             .resizable(false)
             .show(ctx, |ui| {
-                ui.horizontal(|ui| {
+                egui::menu::bar(ui, |ui| {
                     ui.menu_button("Campaign", |ui| {
                         ui.set_min_width(200.0);
                         ui.menu_button("New", |ui| {
