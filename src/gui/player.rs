@@ -214,7 +214,18 @@ impl GuiGreedApp {
                                     ui.close_menu();
                                 }
                             }
-                        })
+                        });
+                        ui.menu_button("Race", |ui| {
+                            let old_race = self.character_race.clone();
+                            for race in &self.races {
+                                ui.radio_value(&mut self.character_race, Some(race.clone()), race.get_name());
+                            }
+                            if self.character_race != old_race {
+                                if let Some(race) = self.character_race.clone() {
+                                    self.change_race(old_race, race);
+                                }
+                            }
+                        });
                     });
                     ui.menu_button("Actions", |ui| self.actions_menu(ui));
                     ui.menu_button("Classes", |ui| self.classes_menu(ui));
@@ -554,13 +565,47 @@ impl GuiGreedApp {
     fn add_new_class(&mut self, class: Class) {
         self.primary_actions.push(class.get_primary_action());
         self.secondary_actions.push(class.get_secondary_action());
-        let class_special = class.get_special_action();
-        self.game_state
-            .new_special(class_special.get_name(), class_special.get_description());
+        self.game_state.push_special(class.get_special_action());
         if let Some(campaign) = self.app_state.get_current_campaign_mut() {
             campaign.add_class(class.get_name().clone());
         }
         self.character_classes.push(class);
+    }
+
+    fn change_race(&mut self, old_race: Option<Class>, new_race: Class) {
+        if let Some(race) = old_race {
+            if let Some(primary_index) = self
+                .primary_actions
+                .iter()
+                .position(|action| action.clone() == race.get_primary_action())
+            {
+                self.primary_actions.remove(primary_index);
+            }
+            if let Some(secondary_index) = self
+                .secondary_actions
+                .iter()
+                .position(|action| action.clone() == race.get_secondary_action())
+            {
+                self.secondary_actions.remove(secondary_index);
+            }
+            if let Some(special_index) = self
+                .game_state
+                .get_special_actions()
+                .iter()
+                .position(|action| action.clone() == race.get_special_action())
+            {
+                self.game_state.remove_special_action(special_index);
+            }
+        }
+        self.primary_actions
+            .insert(0, new_race.get_primary_action());
+        self.secondary_actions
+            .insert(0, new_race.get_secondary_action());
+        self.game_state
+            .insert_special(0, new_race.get_special_action());
+        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+            campaign.replace_race(new_race.get_name());
+        }
     }
 
     fn remove_class(&mut self, class: Class) {
