@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use super::actions::{PrimaryAction, SecondaryAction, SpecialAction};
+use super::{
+    actions::{PrimaryAction, SecondaryAction, SpecialAction},
+    classes::{Class, ClassCache},
+};
 
 #[derive(Serialize, Deserialize, Default, Debug, Eq, PartialEq, Clone)]
 pub struct Character {
@@ -26,6 +29,70 @@ impl Character {
 
     pub fn get_primary_actions(&self) -> Vec<PrimaryAction> {
         self.primary_actions.clone()
+    }
+
+    pub fn get_all_actions(
+        &self,
+        class_cache: &ClassCache,
+    ) -> (Vec<PrimaryAction>, Vec<SecondaryAction>, Vec<SpecialAction>) {
+        let character_race = self
+            .get_race()
+            .map(|race_name| {
+                class_cache
+                    .get_races()
+                    .iter()
+                    .find(|race| race.get_name() == race_name.clone())
+                    .map(|race| race.clone())
+            })
+            .flatten();
+        let character_classes = self
+            .get_classes()
+            .iter()
+            .filter_map(|class_name| {
+                class_cache
+                    .get_classes()
+                    .iter()
+                    .find(|class| class.get_name() == class_name.clone())
+                    .map(|class| class.clone())
+            })
+            .collect::<Vec<Class>>();
+
+        let primary_actions = character_race
+            .clone()
+            .map_or_else(|| vec![], |race| vec![race.get_primary_action()])
+            .into_iter()
+            .chain(
+                character_classes
+                    .iter()
+                    .map(|class| class.get_primary_action()),
+            )
+            .chain(self.get_primary_actions())
+            .collect();
+
+        let secondary_actions = character_race
+            .clone()
+            .map_or_else(|| vec![], |race| vec![race.get_secondary_action()])
+            .into_iter()
+            .chain(
+                character_classes
+                    .iter()
+                    .map(|class| class.get_secondary_action()),
+            )
+            .chain(self.get_secondary_actions())
+            .collect();
+
+        let special_actions = character_race
+            .map_or_else(|| vec![], |race| vec![race.get_special_action()])
+            .into_iter()
+            .chain(
+                character_classes
+                    .iter()
+                    .map(|class| class.get_special_action()),
+            )
+            .chain(self.get_special_actions())
+            .collect();
+
+        (primary_actions, secondary_actions, special_actions)
     }
 
     pub fn get_secondary_actions(&self) -> Vec<SecondaryAction> {

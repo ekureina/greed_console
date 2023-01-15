@@ -21,18 +21,19 @@ fn main() {
         "Greed Console",
         native_options,
         Box::new(|cc| {
-            let (races, classes) = if let Some(cache) =
+            let class_cache = if let Some(cache) =
                 eframe::get_value::<ClassCache>(cc.storage.unwrap(), "class_cache")
             {
-                (cache.get_races(), cache.get_classes())
+                cache
             } else {
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
                     .unwrap();
-                rt.block_on(google::get_races_and_classes())
+                let (races, classes) = rt.block_on(google::get_races_and_classes());
+                ClassCache::new(races, classes)
             };
-            Box::new(player::GuiGreedApp::new(cc, races, classes))
+            Box::new(player::GuiGreedApp::new(cc, class_cache))
         }),
     );
 }
