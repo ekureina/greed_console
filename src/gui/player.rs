@@ -126,7 +126,7 @@ impl GuiGreedApp {
         );
     }
 
-    fn menu_panel(&mut self, ctx: &egui::Context) {
+    fn menu_panel(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("menu")
             .resizable(false)
             .show(ctx, |ui| {
@@ -192,6 +192,15 @@ impl GuiGreedApp {
                     }
 
                     ui.menu_button("Stats", |ui| self.stats_panel(ui));
+                    if ui.button("Refresh Rules").clicked() {
+                        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+                        let (races, classes) = rt.block_on(crate::google::get_races_and_classes());
+                        self.class_cache = ClassCache::new(races, classes);
+                        eframe::set_value(frame.storage_mut().unwrap(), "class_cache", &self.class_cache);
+                        if let Some(campaign_name) = self.app_state.get_current_campaign_name() {
+                            self.switch_campaign(campaign_name);
+                        }
+                    }
                     ui.hyperlink_to("Greed Rulset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
                 });
             });
@@ -347,12 +356,12 @@ impl GuiGreedApp {
     fn switch_campaign(&mut self, new_campaign_name: String) {
         self.app_state.set_current_campaign(new_campaign_name);
         let current_campaign = self.app_state.get_current_campaign().unwrap();
-        self.primary_actions = current_campaign.get_primary_actions();
-        self.secondary_actions = current_campaign.get_secondary_actions();
+        let (primary, secondary, special) = current_campaign.get_all_actions(&self.class_cache);
+        self.primary_actions = primary;
+        self.secondary_actions = secondary;
         self.game_state = GameState::default();
-        for action in &current_campaign.get_special_actions() {
-            self.game_state
-                .new_special(action.get_name(), action.get_description());
+        for action in special {
+            self.game_state.push_special(action);
         }
     }
 
@@ -606,7 +615,7 @@ impl eframe::App for GuiGreedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         frame.set_window_title("Greed Console");
 
-        self.menu_panel(ctx);
+        self.menu_panel(ctx, frame);
 
         self.main_panel(ctx);
     }
