@@ -175,9 +175,7 @@ impl GuiGreedApp {
                                 ui.radio_value(&mut self.character_race, Some(race.clone()), race.get_name());
                             }
                             if self.character_race != old_race {
-                                if let Some(race) = self.character_race.clone() {
-                                    self.change_race(old_race, race);
-                                }
+                                self.change_race(old_race, self.character_race.clone());
                             }
                         });
                     });
@@ -360,6 +358,18 @@ impl GuiGreedApp {
         self.primary_actions = primary;
         self.secondary_actions = secondary;
         self.game_state = GameState::default();
+        let old_race = self.character_race.clone();
+        let new_race = current_campaign
+            .get_race()
+            .map(|race_name| {
+                self.class_cache
+                    .get_races()
+                    .iter()
+                    .find(|race| race.get_name() == race_name)
+                    .map(|race| race.clone())
+            })
+            .flatten();
+        self.change_race(old_race, new_race);
         for action in special {
             self.game_state.push_special(action);
         }
@@ -535,7 +545,7 @@ impl GuiGreedApp {
         self.character_classes.push(class);
     }
 
-    fn change_race(&mut self, old_race: Option<Class>, new_race: Class) {
+    fn change_race(&mut self, old_race: Option<Class>, new_race: Option<Class>) {
         if let Some(race) = old_race {
             if let Some(primary_index) = self
                 .primary_actions
@@ -560,14 +570,18 @@ impl GuiGreedApp {
                 self.game_state.remove_special_action(special_index);
             }
         }
-        self.primary_actions
-            .insert(0, new_race.get_primary_action());
-        self.secondary_actions
-            .insert(0, new_race.get_secondary_action());
-        self.game_state
-            .insert_special(0, new_race.get_special_action());
+        if let Some(new_race) = new_race.clone() {
+            if new_race.get_name() != "Human" {
+                self.primary_actions
+                    .insert(0, new_race.get_primary_action());
+                self.secondary_actions
+                    .insert(0, new_race.get_secondary_action());
+                self.game_state
+                    .insert_special(0, new_race.get_special_action());
+            }
+        }
         if let Some(campaign) = self.app_state.get_current_campaign_mut() {
-            campaign.replace_race(new_race.get_name());
+            campaign.replace_race(new_race.map(|class| class.clone().get_name()));
         }
     }
 

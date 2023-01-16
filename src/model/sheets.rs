@@ -146,8 +146,8 @@ impl Character {
         self.race.clone()
     }
 
-    pub fn replace_race(&mut self, new_race: String) {
-        self.race.replace(new_race);
+    pub fn replace_race(&mut self, new_race: Option<String>) {
+        self.race = new_race;
     }
 
     pub fn get_classes(&self) -> Vec<String> {
