@@ -1,6 +1,6 @@
 [package]
 name = "greed_console"
-version = "0.4.0+prerelease"
+version = "0.4.0"
 edition = "2021"
 authors = ["Claire Moore <kurennon@gmail.com>"]
 rust-version = "1.65"
