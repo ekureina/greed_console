@@ -60,6 +60,18 @@ impl GuiGreedApp {
             })
             .flatten();
 
+        let character_classes = character
+            .get_classes()
+            .iter()
+            .filter_map(|class_name| {
+                class_cache
+                    .get_classes()
+                    .iter()
+                    .find(|class| class.get_name() == class_name.clone())
+                    .map(|class| class.clone())
+            })
+            .collect();
+
         GuiGreedApp {
             game_state,
             app_state,
@@ -68,6 +80,7 @@ impl GuiGreedApp {
             secondary_actions,
             class_cache,
             character_race,
+            character_classes,
             ..Default::default()
         }
     }
