@@ -169,7 +169,7 @@ impl GuiGreedApp {
                                 }
                             }
                         });
-                        ui.menu_button("Race", |ui| {
+                        ui.menu_button("Origin", |ui| {
                             let old_race = self.character_race.clone();
                             for race in &self.class_cache.get_races() {
                                 ui.radio_value(&mut self.character_race, Some(race.clone()), race.get_name());

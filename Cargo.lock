@@ -897,7 +897,7 @@ dependencies = [
 
 [[package]]
 name = "greed_console"
-version = "0.4.0+prerelease"
+version = "0.4.0"
 dependencies = [
  "eframe",
  "egui",

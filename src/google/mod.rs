@@ -192,7 +192,7 @@ async fn convert_to_lines(doc: Document) -> Vec<String> {
                 })
                 .flatten()
         })
-        .skip_while(|paragraph| !paragraph.starts_with("Races"))
+        .skip_while(|paragraph| !paragraph.starts_with("Origins"))
         .skip(1)
         .collect()
 }
