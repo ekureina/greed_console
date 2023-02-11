@@ -35,16 +35,13 @@ impl Character {
         &self,
         class_cache: &ClassCache,
     ) -> (Vec<PrimaryAction>, Vec<SecondaryAction>, Vec<SpecialAction>) {
-        let character_race = self
-            .get_race()
-            .map(|race_name| {
-                class_cache
-                    .get_races()
-                    .iter()
-                    .find(|race| race.get_name() == race_name.clone())
-                    .map(|race| race.clone())
-            })
-            .flatten();
+        let character_race = self.get_race().and_then(|race_name| {
+            class_cache
+                .get_races()
+                .iter()
+                .find(|race| race.get_name() == race_name.clone())
+                .cloned()
+        });
         let character_classes = self
             .get_classes()
             .iter()
@@ -53,69 +50,48 @@ impl Character {
                     .get_classes()
                     .iter()
                     .find(|class| class.get_name() == class_name.clone())
-                    .map(|class| class.clone())
+                    .cloned()
             })
             .collect::<Vec<Class>>();
 
         let primary_actions = character_race
             .clone()
-            .map_or_else(
-                || vec![],
-                |race| {
-                    if race.get_name() == "Human" {
-                        vec![]
-                    } else {
-                        vec![race.get_primary_action()]
-                    }
-                },
-            )
+            .map_or_else(Vec::new, |race| {
+                if race.get_name() == "Human" {
+                    vec![]
+                } else {
+                    vec![race.get_primary_action()]
+                }
+            })
             .into_iter()
-            .chain(
-                character_classes
-                    .iter()
-                    .map(|class| class.get_primary_action()),
-            )
+            .chain(character_classes.iter().map(Class::get_primary_action))
             .chain(self.get_primary_actions())
             .collect();
 
         let secondary_actions = character_race
             .clone()
-            .map_or_else(
-                || vec![],
-                |race| {
-                    if race.get_name() == "Human" {
-                        vec![]
-                    } else {
-                        vec![race.get_secondary_action()]
-                    }
-                },
-            )
+            .map_or_else(Vec::new, |race| {
+                if race.get_name() == "Human" {
+                    vec![]
+                } else {
+                    vec![race.get_secondary_action()]
+                }
+            })
             .into_iter()
-            .chain(
-                character_classes
-                    .iter()
-                    .map(|class| class.get_secondary_action()),
-            )
+            .chain(character_classes.iter().map(Class::get_secondary_action))
             .chain(self.get_secondary_actions())
             .collect();
 
         let special_actions = character_race
-            .map_or_else(
-                || vec![],
-                |race| {
-                    if race.get_name() == "Human" {
-                        vec![]
-                    } else {
-                        vec![race.get_special_action()]
-                    }
-                },
-            )
+            .map_or_else(Vec::new, |race| {
+                if race.get_name() == "Human" {
+                    vec![]
+                } else {
+                    vec![race.get_special_action()]
+                }
+            })
             .into_iter()
-            .chain(
-                character_classes
-                    .iter()
-                    .map(|class| class.get_special_action()),
-            )
+            .chain(character_classes.iter().map(Class::get_special_action))
             .chain(self.get_special_actions())
             .collect();
 

@@ -49,16 +49,13 @@ impl GuiGreedApp {
             game_state.push_special(action);
         }
 
-        let character_race = character
-            .get_race()
-            .map(|race_name| {
-                class_cache
-                    .get_races()
-                    .iter()
-                    .find(|race| race.get_name() == race_name.clone())
-                    .map(|race| race.clone())
-            })
-            .flatten();
+        let character_race = character.get_race().and_then(|race_name| {
+            class_cache
+                .get_races()
+                .iter()
+                .find(|race| race.get_name() == race_name.clone())
+                .map(std::clone::Clone::clone)
+        });
 
         let character_classes = character
             .get_classes()
@@ -68,7 +65,7 @@ impl GuiGreedApp {
                     .get_classes()
                     .iter()
                     .find(|class| class.get_name() == class_name.clone())
-                    .map(|class| class.clone())
+                    .map(std::clone::Clone::clone)
             })
             .collect();
 
@@ -217,6 +214,7 @@ impl GuiGreedApp {
             });
     }
 
+    #[allow(clippy::too_many_lines)]
     fn actions_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("Primary", |ui| {
             ui.menu_button("Add", |ui| {
@@ -319,10 +317,9 @@ impl GuiGreedApp {
                 .get_special_actions()
                 .iter()
                 .any(SpecialAction::is_usable)
+                && ui.button("Exhaust").clicked()
             {
-                if ui.button("Exhaust").clicked() {
-                    self.game_state.exhaust_specials();
-                }
+                self.game_state.exhaust_specials();
             }
         });
     }
@@ -334,17 +331,16 @@ impl GuiGreedApp {
                 let current_class_names = self
                     .character_classes
                     .iter()
-                    .map(|class| class.get_name().clone())
+                    .map(Class::get_name)
                     .collect::<Vec<String>>();
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     for class in &self.class_cache.get_classes() {
                         if !self.character_classes.contains(class)
-                            && class.get_class_available(current_class_names.clone())
+                            && class.get_class_available(&current_class_names)
+                            && ui.button(class.get_name()).clicked()
                         {
-                            if ui.button(class.get_name()).clicked() {
-                                classes_to_add.push(class.clone());
-                            }
+                            classes_to_add.push(class.clone());
                         }
                     }
                 });
@@ -357,7 +353,7 @@ impl GuiGreedApp {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for class in self.character_classes.clone() {
                     if ui.button(class.get_name()).clicked() {
-                        self.remove_class(class);
+                        self.remove_class(&class);
                     }
                 }
             });
@@ -372,16 +368,13 @@ impl GuiGreedApp {
         self.secondary_actions = secondary;
         self.game_state = GameState::default();
         let old_race = self.character_race.clone();
-        let new_race = current_campaign
-            .get_race()
-            .map(|race_name| {
-                self.class_cache
-                    .get_races()
-                    .iter()
-                    .find(|race| race.get_name() == race_name)
-                    .map(|race| race.clone())
-            })
-            .flatten();
+        let new_race = current_campaign.get_race().and_then(|race_name| {
+            self.class_cache
+                .get_races()
+                .iter()
+                .find(|race| race.get_name() == race_name)
+                .map(std::clone::Clone::clone)
+        });
         self.change_race(old_race, new_race);
         for action in special {
             self.game_state.push_special(action);
@@ -447,10 +440,9 @@ impl GuiGreedApp {
                     )
                     .on_hover_text(action.get_description())
                     .clicked()
+                    && action.get_name() != "Execute"
                 {
-                    if action.get_name() != "Execute" {
-                        self.game_state.use_primary();
-                    }
+                    self.game_state.use_primary();
                 }
             }
         });
@@ -553,7 +545,7 @@ impl GuiGreedApp {
         self.secondary_actions.push(class.get_secondary_action());
         self.game_state.push_special(class.get_special_action());
         if let Some(campaign) = self.app_state.get_current_campaign_mut() {
-            campaign.add_class(class.get_name().clone());
+            campaign.add_class(class.get_name());
         }
         self.character_classes.push(class);
     }
@@ -594,11 +586,11 @@ impl GuiGreedApp {
             }
         }
         if let Some(campaign) = self.app_state.get_current_campaign_mut() {
-            campaign.replace_race(new_race.map(|class| class.clone().get_name()));
+            campaign.replace_race(new_race.map(|class| class.get_name()));
         }
     }
 
-    fn remove_class(&mut self, class: Class) {
+    fn remove_class(&mut self, class: &Class) {
         if let Some(primary_index) = self
             .primary_actions
             .iter()
@@ -624,7 +616,7 @@ impl GuiGreedApp {
         if let Some(class_index) = self
             .character_classes
             .iter()
-            .position(|stored_class| stored_class.clone() == class)
+            .position(|stored_class| stored_class == class)
         {
             self.character_classes.remove(class_index);
         }
@@ -650,7 +642,7 @@ impl eframe::App for GuiGreedApp {
     fn save(&mut self, storage: &mut dyn Storage) {
         info!("Saving! AppState: {:?}", self.app_state);
         eframe::set_value(storage, eframe::APP_KEY, &self.app_state);
-        if let None = eframe::get_value::<ClassCache>(storage, "class_cache") {
+        if eframe::get_value::<ClassCache>(storage, "class_cache").is_none() {
             eframe::set_value(storage, "class_cache", &self.class_cache);
         }
     }

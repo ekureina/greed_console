@@ -326,7 +326,7 @@ impl Stat {
         }
     }
 
-    pub fn current_value(&self) -> i8 {
+    pub fn current_value(self) -> i8 {
         self.base + self.turn_mod + self.round_mod + self.battle_mod
     }
 

@@ -43,14 +43,15 @@ async fn get_document() -> google_docs1::api::Document {
         .1
 }
 
-fn get_class(first_line: String, mut paragraphs: impl Iterator<Item = String>) -> Class {
-    let class_name = first_line.split("(").collect::<Vec<&str>>()[0]
+#[allow(clippy::let_underscore_drop)]
+fn get_class(first_line: &str, mut paragraphs: impl Iterator<Item = String>) -> Class {
+    let class_name = first_line.split('(').collect::<Vec<&str>>()[0]
         .trim()
         .to_string();
     let class_requirements = if first_line.contains("Req:") {
         first_line.split("Req:").collect::<Vec<&str>>()[1]
             .trim()
-            .split(",")
+            .split(',')
             .collect::<Vec<&str>>()
             .into_iter()
             .map(|requirement_class| requirement_class.trim().to_string())
@@ -64,40 +65,35 @@ fn get_class(first_line: String, mut paragraphs: impl Iterator<Item = String>) -
     let _ = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Passive"))
-        .collect::<Vec<String>>()
-        .join("")
+        .collect::<String>()
         .trim_end()
         .to_owned();
     let _ = paragraphs.next().unwrap().trim_end().to_owned();
     let _ = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Primary"))
-        .collect::<Vec<String>>()
-        .join("")
+        .collect::<String>()
         .trim_end()
         .to_owned();
     let primary_name = paragraphs.next().unwrap().trim_end().to_owned();
     let primary_description = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Secondary"))
-        .collect::<Vec<String>>()
-        .join("")
+        .collect::<String>()
         .trim_end()
         .to_owned();
     let secondary_name = paragraphs.next().unwrap().trim_end().to_owned();
     let secondary_description = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Special"))
-        .collect::<Vec<String>>()
-        .join("")
+        .collect::<String>()
         .trim_end()
         .to_owned();
     let special_name = paragraphs.next().unwrap().trim_end().to_owned();
     let special_description = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Subclasses"))
-        .collect::<Vec<String>>()
-        .join("")
+        .collect::<String>()
         .trim_end()
         .to_owned();
     Class::new(
@@ -109,48 +105,52 @@ fn get_class(first_line: String, mut paragraphs: impl Iterator<Item = String>) -
     )
 }
 
-fn get_race(first_line: String, mut paragraphs: impl Iterator<Item = String>) -> Class {
+#[allow(clippy::let_underscore_drop)]
+fn get_race(first_line: &str, mut paragraphs: impl Iterator<Item = String>) -> Class {
     let race_name = first_line.split_whitespace().collect::<Vec<&str>>()[0].to_string();
-    if race_name != "Human" {
+    if race_name == "Human" {
+        Class::new(
+            String::from("Human"),
+            PrimaryAction::new(String::new(), String::new()),
+            SecondaryAction::new(String::new(), String::new()),
+            SpecialAction::new(String::new(), String::new()),
+            vec![],
+        )
+    } else {
         paragraphs.next().unwrap();
         let _ = paragraphs.next().unwrap().trim_end().to_owned();
         let _ = paragraphs
             .by_ref()
             .take_while(|line| !line.starts_with("Passive"))
-            .collect::<Vec<String>>()
-            .join("")
+            .collect::<String>()
             .trim_end()
             .to_owned();
         let _ = paragraphs.next().unwrap().trim_end().to_owned();
         let _ = paragraphs
             .by_ref()
             .take_while(|line| !line.starts_with("Primary"))
-            .collect::<Vec<String>>()
-            .join("")
+            .collect::<String>()
             .trim_end()
             .to_owned();
         let primary_name = paragraphs.next().unwrap().trim_end().to_owned();
         let primary_description = paragraphs
             .by_ref()
             .take_while(|line| !line.starts_with("Secondary"))
-            .collect::<Vec<String>>()
-            .join("")
+            .collect::<String>()
             .trim_end()
             .to_owned();
         let secondary_name = paragraphs.next().unwrap().trim_end().to_owned();
         let secondary_description = paragraphs
             .by_ref()
             .take_while(|line| !line.starts_with("Special"))
-            .collect::<Vec<String>>()
-            .join("")
+            .collect::<String>()
             .trim_end()
             .to_owned();
         let special_name = paragraphs.next().unwrap().trim_end().to_owned();
         let special_description = paragraphs
             .by_ref()
             .take_while(|line| !line.trim().is_empty())
-            .collect::<Vec<String>>()
-            .join("")
+            .collect::<String>()
             .trim_end()
             .to_owned();
         Class::new(
@@ -160,52 +160,38 @@ fn get_race(first_line: String, mut paragraphs: impl Iterator<Item = String>) ->
             SpecialAction::new(special_name, special_description),
             vec![],
         )
-    } else {
-        Class::new(
-            String::from("Human"),
-            PrimaryAction::new("".to_owned(), "".to_owned()),
-            SecondaryAction::new("".to_owned(), "".to_owned()),
-            SpecialAction::new("".to_owned(), "".to_owned()),
-            vec![],
-        )
     }
 }
 
-async fn convert_to_lines(doc: Document) -> Vec<String> {
+fn convert_to_lines(doc: Document) -> Vec<String> {
     let content = doc.body.unwrap().content.unwrap();
 
     content
         .iter()
         .filter_map(|element| {
-            element
-                .paragraph
-                .as_ref()
-                .map(|p| {
-                    p.elements.as_ref().map(|e| {
-                        e.iter()
-                            .filter_map(|pe| {
-                                pe.text_run.as_ref().map(|tr| tr.content.clone()).flatten()
-                            })
-                            .collect::<Vec<String>>()
-                            .join("")
-                    })
+            element.paragraph.as_ref().and_then(|p| {
+                p.elements.as_ref().map(|e| {
+                    e.iter()
+                        .filter_map(|pe| pe.text_run.as_ref().and_then(|tr| tr.content.clone()))
+                        .collect::<String>()
                 })
-                .flatten()
+            })
         })
         .skip_while(|paragraph| !paragraph.starts_with("Origins"))
         .skip(1)
         .collect()
 }
 
+#[allow(clippy::skip_while_next)]
 pub async fn get_races_and_classes() -> (Vec<Class>, Vec<Class>) {
     let document = get_document().await;
 
-    let mut lines = convert_to_lines(document).await.into_iter();
+    let mut lines = convert_to_lines(document).into_iter();
 
     let mut races = Vec::<Class>::new();
     let mut line = lines.next();
     while !line.as_ref().unwrap().starts_with("Template") {
-        let race = get_race(line.unwrap(), lines.by_ref());
+        let race = get_race(&line.unwrap(), lines.by_ref());
         if race.clone().get_name() == "Human" {
             line = lines
                 .by_ref()
@@ -223,13 +209,13 @@ pub async fn get_races_and_classes() -> (Vec<Class>, Vec<Class>) {
     let _ = lines
         .by_ref()
         .skip_while(|paragraph| !paragraph.starts_with("Template"));
-    line = lines.by_ref().skip_while(|line| !line.contains("(")).next();
+    line = lines.by_ref().skip_while(|line| !line.contains('(')).next();
 
     let mut classes = Vec::<Class>::new();
     while line.is_some() {
-        let class = get_class(line.unwrap(), lines.by_ref());
+        let class = get_class(&line.unwrap(), lines.by_ref());
         classes.push(class);
-        line = lines.by_ref().skip_while(|line| !line.contains("(")).next();
+        line = lines.by_ref().skip_while(|line| !line.contains('(')).next();
     }
     (races, classes)
 }
