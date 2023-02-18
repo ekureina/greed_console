@@ -173,14 +173,16 @@ impl GuiGreedApp {
                                 }
                             });
                         }
-                        ui.menu_button("Remove", |ui| {
-                            for campaign in self.app_state.get_campaign_names() {
-                                if ui.button(campaign.clone()).clicked() {
-                                    self.app_state.remove_campaign(campaign);
-                                    ui.close_menu();
+                        if !self.app_state.get_campaign_names().is_empty() {
+                            ui.menu_button("Remove", |ui| {
+                                for campaign in self.app_state.get_campaign_names() {
+                                    if ui.button(campaign.clone()).clicked() {
+                                        self.app_state.remove_campaign(campaign);
+                                        ui.close_menu();
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                         ui.menu_button("Origin", |ui| {
                             let old_race = self.character_race.clone();
                             for race in &self.class_cache.get_races() {
