@@ -416,53 +416,6 @@ impl GuiGreedApp {
         });
     }
 
-    fn add_new_primary(&mut self) {
-        if !self.primary_add_text_buffer.is_empty() {
-            let primary_action = PrimaryAction::new(
-                self.primary_add_text_buffer.clone(),
-                self.primary_add_description_text_buffer.clone(),
-            );
-            self.primary_actions.push(primary_action.clone());
-            if let Some(campaign) = self.app_state.get_current_campaign_mut() {
-                campaign.add_primary_action(primary_action);
-            }
-            self.primary_add_text_buffer.clear();
-            self.primary_add_description_text_buffer.clear();
-        }
-    }
-
-    fn add_new_secondary(&mut self) {
-        if !self.secondary_add_text_buffer.is_empty() {
-            let secondary_action = SecondaryAction::new(
-                self.secondary_add_text_buffer.clone(),
-                self.secondary_add_description_text_buffer.clone(),
-            );
-            self.secondary_actions.push(secondary_action.clone());
-            if let Some(campaign) = self.app_state.get_current_campaign_mut() {
-                campaign.add_secondary_action(secondary_action);
-            }
-            self.secondary_add_text_buffer.clear();
-            self.secondary_add_description_text_buffer.clear();
-        }
-    }
-
-    fn add_new_special(&mut self) {
-        if !self.special_add_text_buffer.is_empty() {
-            self.game_state.new_special(
-                self.special_add_text_buffer.clone(),
-                self.special_add_description_text_buffer.clone(),
-            );
-            if let Some(campaign) = self.app_state.get_current_campaign_mut() {
-                campaign.add_special_action(SpecialAction::new(
-                    self.special_add_text_buffer.clone(),
-                    self.special_add_description_text_buffer.clone(),
-                ));
-            }
-            self.special_add_text_buffer.clear();
-            self.special_add_description_text_buffer.clear();
-        }
-    }
-
     fn add_new_class(&mut self, class: Class) {
         self.primary_actions.push(class.get_primary_action());
         self.secondary_actions.push(class.get_secondary_action());
