@@ -158,19 +158,21 @@ impl GuiGreedApp {
                                     self.app_state
                                         .create_campaign(self.new_campaign_text.clone());
                                     self.switch_campaign(self.new_campaign_text.clone());
-                                    self.new_campaign_text.clear();
                                 }
+                                self.new_campaign_text.clear();
                                 ui.close_menu();
                             }
                         });
-                        ui.menu_button("Switch", |ui| {
-                            for campaign in self.app_state.get_campaign_names() {
-                                if ui.button(campaign.clone()).clicked() {
-                                    self.switch_campaign(campaign);
-                                    ui.close_menu();
+                        if self.app_state.get_campaign_names().iter().any(|name| *name.clone() != self.app_state.get_current_campaign_name().unwrap_or_else(|| "None".to_owned())) {
+                            ui.menu_button("Switch", |ui| {
+                                for campaign in self.app_state.get_campaign_names() {
+                                    if self.app_state.get_current_campaign_name().is_some() && self.app_state.get_current_campaign_name().unwrap() != campaign && ui.button(campaign.clone()).clicked() {
+                                        self.switch_campaign(campaign);
+                                        ui.close_menu();
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                         ui.menu_button("Remove", |ui| {
                             for campaign in self.app_state.get_campaign_names() {
                                 if ui.button(campaign.clone()).clicked() {
