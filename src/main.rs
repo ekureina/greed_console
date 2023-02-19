@@ -16,7 +16,17 @@ mod model;
 fn main() {
     env_logger::init();
 
-    let native_options = NativeOptions::default();
+    let img_bytes = include_bytes!(concat!(env!("OUT_DIR"), "greed_console_icon")).to_vec();
+    let icon_data = eframe::IconData {
+        rgba: img_bytes,
+        width: env!("GREED_CONSOLE_ICON_WIDTH").parse().unwrap(),
+        height: env!("GREED_CONSOLE_ICON_HEIGHT").parse().unwrap(),
+    };
+
+    let native_options = NativeOptions {
+        icon_data: Some(icon_data),
+        ..Default::default()
+    };
 
     eframe::run_native(
         "Greed Console",
