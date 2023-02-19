@@ -193,7 +193,21 @@ impl GuiGreedApp {
                             }
                         });
                     });
-                    ui.menu_button("Actions", |ui| self.actions_menu(ui));
+                    
+                    if ui.button("Refresh Secondary Action").clicked() {
+                        self.game_state.extra_secondary();
+                    }
+                    
+                    if self
+                        .game_state
+                        .get_special_actions()
+                        .iter()
+                        .any(SpecialAction::is_usable)
+                        && ui.button("Exhaust All Specials").clicked()
+                    {
+                        self.game_state.exhaust_specials();
+                    }
+
                     ui.menu_button("Classes", |ui| self.classes_menu(ui));
                     if ui.button("Next Battle").clicked() {
                         self.game_state.next_battle();
@@ -216,25 +230,6 @@ impl GuiGreedApp {
                     ui.hyperlink_to("Greed Rulset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
                 });
             });
-    }
-
-    fn actions_menu(&mut self, ui: &mut egui::Ui) {
-        ui.menu_button("Secondary", |ui| {
-            if ui.button("Refresh via Other Player Target").clicked() {
-                self.game_state.extra_secondary();
-            }
-        });
-        ui.menu_button("Special", |ui| {
-            if self
-                .game_state
-                .get_special_actions()
-                .iter()
-                .any(SpecialAction::is_usable)
-                && ui.button("Exhaust").clicked()
-            {
-                self.game_state.exhaust_specials();
-            }
-        });
     }
 
     fn classes_menu(&mut self, ui: &mut egui::Ui) {
