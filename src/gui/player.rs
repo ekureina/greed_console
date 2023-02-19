@@ -229,20 +229,6 @@ impl GuiGreedApp {
                 .game_state
                 .get_special_actions()
                 .iter()
-                .any(|action| !action.is_usable())
-            {
-                ui.menu_button("Refresh", |ui| {
-                    for action in self.game_state.get_special_actions().clone() {
-                        if !action.is_usable() && ui.button(action.get_name()).clicked() {
-                            self.refresh_special(action.get_name());
-                        }
-                    }
-                });
-            }
-            if self
-                .game_state
-                .get_special_actions()
-                .iter()
                 .any(SpecialAction::is_usable)
                 && ui.button("Exhaust").clicked()
             {
@@ -404,21 +390,26 @@ impl GuiGreedApp {
             ui.label("Specials:");
 
             for action in &self.game_state.get_special_actions().clone() {
-                if ui
-                    .add_enabled(
-                        action.is_usable() && self.game_state.get_any_special_usable(),
-                        egui::Button::new(action.get_name()),
-                    )
-                    .on_hover_text(action.get_description())
-                    .on_disabled_hover_text(action.get_description())
-                    .clicked()
-                {
-                    self.game_state.use_special(action.get_name());
-                    if action.is_named("Action Surge") {
-                        self.game_state.extra_primary();
-                        self.game_state.extra_primary();
+                ui.horizontal(|ui| {
+                    if ui
+                        .add_enabled(
+                            action.is_usable() && self.game_state.get_any_special_usable(),
+                            egui::Button::new(action.get_name()),
+                        )
+                        .on_hover_text(action.get_description())
+                        .on_disabled_hover_text(action.get_description())
+                        .clicked()
+                    {
+                        self.game_state.use_special(action.get_name());
+                        if action.is_named("Action Surge") {
+                            self.game_state.extra_primary();
+                            self.game_state.extra_primary();
+                        }
                     }
-                }
+                    if !action.is_usable() && ui.button("Refresh").clicked() {
+                        self.game_state.refresh_special(action.get_name());
+                    }
+                });
             }
         });
     }
