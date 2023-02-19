@@ -116,18 +116,6 @@ impl GameState {
     }
 
     /**
-     * Get the description of the specified special move
-     */
-    pub fn get_special_description<S: Into<String> + Clone>(&mut self, name: &S) -> Option<String> {
-        for action in &mut self.special_actions.iter() {
-            if action.is_named(name.clone()) {
-                return Some(action.get_description());
-            }
-        }
-        None
-    }
-
-    /**
      * Exhaust all specials in this game
      */
     pub fn exhaust_specials(&mut self) {
@@ -155,14 +143,6 @@ impl GameState {
      */
     pub fn extra_secondary(&mut self) {
         self.secondary_actions += 1;
-    }
-
-    /**
-     * Register a new special action
-     */
-    pub fn new_special<N: Into<String>, D: Into<String>>(&mut self, name: N, description: D) {
-        self.special_actions
-            .push(SpecialAction::new(name, description));
     }
 
     pub fn push_special(&mut self, special_action: SpecialAction) {
@@ -222,24 +202,6 @@ impl GameState {
         self.special_usable
             && !self.special_actions.is_empty()
             && self.special_actions.iter().any(SpecialAction::is_usable)
-    }
-
-    /**
-     * Query if the given special action is a contained special action
-     */
-    pub fn get_special_action_exists<S: Into<String> + Clone>(&self, name: &S) -> bool {
-        self.special_actions
-            .iter()
-            .any(|action| action.is_named(name.clone()))
-    }
-
-    /**
-     * Query if the given special action is usable
-     */
-    pub fn get_special_action_usable<S: Into<String> + Clone>(&self, name: &S) -> bool {
-        self.special_actions
-            .iter()
-            .any(|action| action.is_named(name.clone()) && action.is_usable())
     }
 
     /**
@@ -375,7 +337,7 @@ mod tests {
     #[test]
     fn test_exclusion() {
         let mut state = GameState::default();
-        state.new_special("Test", "Lorem ipsum");
+        state.push_special(SpecialAction::new("Test", "Lorem ipsum"));
 
         assert!(state.get_primary_usable());
         state.use_primary();
@@ -397,7 +359,7 @@ mod tests {
     #[test]
     fn test_next_turn() {
         let mut state = GameState::default();
-        state.new_special("Test", "Lorem ipsum");
+        state.push_special(SpecialAction::new("Test", "Lorem ipsum"));
 
         state.use_primary();
         state.use_secondary();
@@ -411,6 +373,7 @@ mod tests {
         assert_eq!(state.get_round_num(), 1);
 
         state.next_turn();
+        state.next_turn();
 
         assert_eq!(state.get_round_num(), 2);
         assert!(state.get_primary_usable());
@@ -418,14 +381,14 @@ mod tests {
         assert!(!state.get_any_special_usable());
         assert!(!state.get_inspiration_usable());
 
-        state.new_special("Test2", "Lorem ipsum");
+        state.push_special(SpecialAction::new("Test2", "Lorem ipsum"));
         assert!(state.get_any_special_usable());
     }
 
     #[test]
     fn test_next_battle() {
         let mut state = GameState::default();
-        state.new_special("Test", "Lorem ipsum");
+        state.push_special(SpecialAction::new("Test", "Lorem ipsum"));
 
         state.use_primary();
         state.use_secondary();
@@ -439,6 +402,7 @@ mod tests {
         assert_eq!(state.get_round_num(), 1);
 
         state.next_turn();
+        state.next_turn();
 
         assert_eq!(state.get_round_num(), 2);
         assert!(state.get_primary_usable());
@@ -446,7 +410,7 @@ mod tests {
         assert!(!state.get_any_special_usable());
         assert!(!state.get_inspiration_usable());
 
-        state.new_special("Test2", "Lorem ipsum");
+        state.push_special(SpecialAction::new("Test2", "Lorem ipsum"));
         assert!(state.get_any_special_usable());
 
         state.next_battle();
@@ -503,40 +467,72 @@ mod tests {
         assert_eq!(state.get_special_actions().len(), 0);
         assert!(!state.get_any_special_usable());
 
-        state.new_special("Test", "Lorem ipsum");
+        state.push_special(SpecialAction::new("Test", "Lorem ipsum"));
 
         assert_eq!(state.get_special_actions().len(), 1);
-        assert!(state.get_special_action_usable(&"Test"));
+        let special = state
+            .get_special_actions()
+            .iter()
+            .find(|action| action.get_name() == "Test");
+        assert!(special.is_some());
+        assert!(special.unwrap().is_usable());
         assert!(state.get_any_special_usable());
 
         state.use_special("Test");
 
         assert_eq!(state.get_special_actions().len(), 1);
-        assert!(!state.get_special_action_usable(&"Test"));
+        let special = state
+            .get_special_actions()
+            .iter()
+            .find(|action| action.get_name() == "Test");
+        assert!(special.is_some());
+        assert!(!special.unwrap().is_usable());
         assert!(!state.get_any_special_usable());
 
         state.next_turn();
+        state.next_turn();
 
         assert_eq!(state.get_special_actions().len(), 1);
-        assert!(!state.get_special_action_usable(&"Test"));
+        let special = state
+            .get_special_actions()
+            .iter()
+            .find(|action| action.get_name() == "Test");
+        assert!(special.is_some());
+        assert!(!special.unwrap().is_usable());
         assert!(!state.get_any_special_usable());
 
-        state.new_special("Test2", "Lorem ipsum");
+        state.push_special(SpecialAction::new("Test2", "Lorem ipsum"));
 
         assert_eq!(state.get_special_actions().len(), 2);
-        assert!(state.get_special_action_usable(&"Test2"));
+        let special = state
+            .get_special_actions()
+            .iter()
+            .find(|action| action.get_name() == "Test2");
+        assert!(special.is_some());
+        assert!(special.unwrap().is_usable());
         assert!(state.get_any_special_usable());
 
         state.use_special("Test2");
 
         assert_eq!(state.get_special_actions().len(), 2);
-        assert!(!state.get_special_action_usable(&"Test2"));
+        let special = state
+            .get_special_actions()
+            .iter()
+            .find(|action| action.get_name() == "Test2");
+        assert!(special.is_some());
+        assert!(!special.unwrap().is_usable());
         assert!(!state.get_any_special_usable());
 
         state.next_turn();
+        state.next_turn();
 
         assert_eq!(state.get_special_actions().len(), 2);
-        assert!(!state.get_special_action_usable(&"Test2"));
+        let special = state
+            .get_special_actions()
+            .iter()
+            .find(|action| action.get_name() == "Test2");
+        assert!(special.is_some());
+        assert!(!special.unwrap().is_usable());
         assert!(!state.get_any_special_usable());
     }
 
@@ -545,7 +541,7 @@ mod tests {
         let mut state = GameState::default();
 
         for i in 0..500 {
-            state.new_special(format!("Test{}", i), "Lorem ipsum");
+            state.push_special(SpecialAction::new(format!("Test{}", i), "Lorem ipsum"));
         }
 
         assert_eq!(state.special_actions.len(), 500);
@@ -560,30 +556,33 @@ mod tests {
     #[test]
     fn test_refreshable_specials() {
         let mut state = GameState::default();
-        state.new_special("Test", "Lorem ipsum");
+        state.push_special(SpecialAction::new("Test", "Lorem ipsum"));
 
         state.use_special("Test");
 
-        assert!(!state.get_special_action_usable(&"Test"));
+        let special = state
+            .get_special_actions()
+            .iter()
+            .find(|action| action.get_name() == "Test");
+        assert!(special.is_some());
+        assert!(!special.unwrap().is_usable());
 
         state.next_turn();
 
-        assert!(!state.get_special_action_usable(&"Test"));
+        let special = state
+            .get_special_actions()
+            .iter()
+            .find(|action| action.get_name() == "Test");
+        assert!(special.is_some());
+        assert!(!special.unwrap().is_usable());
 
         state.refresh_special("Test");
 
-        assert!(state.get_special_action_usable(&"Test"));
-    }
-
-    #[test]
-    fn test_get_special_description() {
-        let mut state = GameState::default();
-        state.new_special("Test", "Lorem ipsum");
-
-        assert_eq!(
-            state.get_special_description(&"Test"),
-            Some("Lorem ipsum".to_owned())
-        );
-        assert_eq!(state.get_special_description(&"Test2"), None);
+        let special = state
+            .get_special_actions()
+            .iter()
+            .find(|action| action.get_name() == "Test");
+        assert!(special.is_some());
+        assert!(special.unwrap().is_usable());
     }
 }

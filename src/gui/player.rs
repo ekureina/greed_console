@@ -16,13 +16,7 @@ pub struct GuiGreedApp {
     app_state: AppState,
     new_campaign_text: String,
     primary_actions: Vec<PrimaryAction>,
-    primary_add_text_buffer: String,
-    primary_add_description_text_buffer: String,
     secondary_actions: Vec<SecondaryAction>,
-    secondary_add_text_buffer: String,
-    secondary_add_description_text_buffer: String,
-    special_add_text_buffer: String,
-    special_add_description_text_buffer: String,
     class_cache: ClassCache,
     character_origin: Option<Class>,
     character_classes: Vec<Class>,
@@ -78,7 +72,6 @@ impl GuiGreedApp {
             class_cache,
             character_origin,
             character_classes,
-            ..Default::default()
         }
     }
 
@@ -402,7 +395,7 @@ impl GuiGreedApp {
                         }
                     }
                     if !action.is_usable() && ui.button("Refresh").clicked() {
-                        self.game_state.refresh_special(action.get_name());
+                        self.refresh_special(action.get_name());
                     }
                 });
             }

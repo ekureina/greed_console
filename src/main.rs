@@ -2,7 +2,6 @@
 #![warn(deprecated_in_future)]
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
-#![allow(dead_code)]
 
 use crate::gui::player;
 
