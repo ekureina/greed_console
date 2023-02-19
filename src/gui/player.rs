@@ -7,7 +7,11 @@ use eframe::egui;
 use eframe::glow::Context;
 use eframe::Storage;
 use log::info;
+use tokio::join;
+use tokio::runtime::Runtime;
+use tokio::task::JoinHandle;
 
+use std::cell::RefCell;
 use std::time::Duration;
 
 /*
@@ -46,7 +50,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ";
 
-#[derive(Default)]
 pub struct GuiGreedApp {
     game_state: GameState,
     app_state: AppState,
@@ -56,6 +59,8 @@ pub struct GuiGreedApp {
     class_cache: ClassCache,
     character_origin: Option<Class>,
     character_classes: Vec<Class>,
+    rule_refresh_runtime: Runtime,
+    rule_refresh_handle: RefCell<Option<JoinHandle<(Vec<Class>, Vec<Class>)>>>,
 }
 
 impl GuiGreedApp {
@@ -99,6 +104,8 @@ impl GuiGreedApp {
             })
             .collect();
 
+        let rule_refresh_runtime = tokio::runtime::Builder::new_multi_thread().thread_name("rules-refresh-worker").enable_all().build().unwrap();
+
         GuiGreedApp {
             game_state,
             app_state,
@@ -108,6 +115,8 @@ impl GuiGreedApp {
             class_cache,
             character_origin,
             character_classes,
+            rule_refresh_runtime,
+            rule_refresh_handle: RefCell::new(None),
         }
     }
 
@@ -248,27 +257,46 @@ impl GuiGreedApp {
                     }
 
                     ui.menu_button("Classes", |ui| self.classes_menu(ui));
-                    if ui.button("Next Battle").clicked() {
-                        self.game_state.next_battle();
-                    }
-
-                    if ui.button("Next Turn").clicked() {
-                        self.game_state.next_turn();
-                    }
+                    self.next_part_buttons(ui);
 
                     ui.menu_button("Stats", |ui| self.stats_panel(ui));
-                    if ui.button("Refresh Rules").clicked() {
-                        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-                        let (origins, classes) = rt.block_on(crate::google::get_origins_and_classes());
-                        self.class_cache = ClassCache::new(origins, classes);
-                        eframe::set_value(frame.storage_mut().unwrap(), "class_cache", &self.class_cache);
-                        if let Some(campaign_name) = self.app_state.get_current_campaign_name() {
-                            self.switch_campaign(campaign_name);
-                        }
-                    }
+
+                    self.refresh_rules(ui, frame);
+
                     ui.hyperlink_to("Greed Rulset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
                 });
             });
+    }
+
+    fn next_part_buttons(&mut self, ui: &mut egui::Ui) {
+        if ui.button("Next Battle").clicked() {
+            self.game_state.next_battle();
+        }
+
+        if ui.button("Next Turn").clicked() {
+            self.game_state.next_turn();
+        }
+    }
+
+    fn refresh_rules(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        if ui.button("Refresh Rules").clicked() {
+            info!("Started refreshing rules!");
+            self.rule_refresh_handle = RefCell::new(Some(self.rule_refresh_runtime.spawn(crate::google::get_origins_and_classes())));
+        }
+        if self.rule_refresh_handle.borrow().is_some() {
+            info!("Refreshing rules!");
+            if self.rule_refresh_handle.borrow().as_ref().unwrap().is_finished() {
+                info!("Rules refreshed...");
+                let refresh_handle = self.rule_refresh_handle.replace(None);
+                let (origins, classes) = self.rule_refresh_runtime.block_on(async { join!(refresh_handle.unwrap()) }).0.unwrap();
+                self.class_cache = ClassCache::new(origins, classes);
+                eframe::set_value(frame.storage_mut().unwrap(), "class_cache", &self.class_cache);
+                if let Some(campaign_name) = self.app_state.get_current_campaign_name() {
+                    self.switch_campaign(campaign_name);
+                }
+                info!("Campaign updated to new rules.");
+            }
+        }
     }
 
     fn classes_menu(&mut self, ui: &mut egui::Ui) {
