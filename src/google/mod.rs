@@ -5,6 +5,24 @@ use google_docs1::api::Document;
 use google_docs1::oauth2::{self, ServiceAccountAuthenticator};
 use google_docs1::{hyper, hyper_rustls, Docs};
 
+/*
+ * A console and digital character sheet for campaigns under the greed ruleset.
+ * Copyright (C) 2023 Claire Moore
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 fn get_creds() -> oauth2::ServiceAccountKey {
     oauth2::parse_service_account_key(include_bytes!("../../credentials.json")).unwrap()
 }
