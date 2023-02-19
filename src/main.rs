@@ -41,8 +41,8 @@ fn main() {
                     .enable_all()
                     .build()
                     .unwrap();
-                let (races, classes) = rt.block_on(google::get_races_and_classes());
-                ClassCache::new(races, classes)
+                let (origins, classes) = rt.block_on(google::get_origins_and_classes());
+                ClassCache::new(origins, classes)
             };
             Box::new(player::GuiGreedApp::new(cc, class_cache))
         }),

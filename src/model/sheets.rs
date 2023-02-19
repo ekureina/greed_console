@@ -7,7 +7,7 @@ use super::{
 
 #[derive(Serialize, Deserialize, Default, Debug, Eq, PartialEq, Clone)]
 pub struct Character {
-    race: Option<String>,
+    origin: Option<String>,
     classes: Vec<String>,
 }
 
@@ -16,11 +16,11 @@ impl Character {
         &self,
         class_cache: &ClassCache,
     ) -> (Vec<PrimaryAction>, Vec<SecondaryAction>, Vec<SpecialAction>) {
-        let character_race = self.get_race().and_then(|race_name| {
+        let character_origin = self.get_origin().and_then(|origin_name| {
             class_cache
-                .get_races()
+                .get_origins()
                 .iter()
-                .find(|race| race.get_name() == race_name.clone())
+                .find(|origin| origin.get_name() == origin_name.clone())
                 .cloned()
         });
         let character_classes = self
@@ -35,38 +35,38 @@ impl Character {
             })
             .collect::<Vec<Class>>();
 
-        let primary_actions = character_race
+        let primary_actions = character_origin
             .clone()
-            .map_or_else(Vec::new, |race| {
-                if race.get_name() == "Human" {
+            .map_or_else(Vec::new, |origin| {
+                if origin.get_name() == "Human" {
                     vec![]
                 } else {
-                    vec![race.get_primary_action()]
+                    vec![origin.get_primary_action()]
                 }
             })
             .into_iter()
             .chain(character_classes.iter().map(Class::get_primary_action))
             .collect();
 
-        let secondary_actions = character_race
+        let secondary_actions = character_origin
             .clone()
-            .map_or_else(Vec::new, |race| {
-                if race.get_name() == "Human" {
+            .map_or_else(Vec::new, |origin| {
+                if origin.get_name() == "Human" {
                     vec![]
                 } else {
-                    vec![race.get_secondary_action()]
+                    vec![origin.get_secondary_action()]
                 }
             })
             .into_iter()
             .chain(character_classes.iter().map(Class::get_secondary_action))
             .collect();
 
-        let special_actions = character_race
-            .map_or_else(Vec::new, |race| {
-                if race.get_name() == "Human" {
+        let special_actions = character_origin
+            .map_or_else(Vec::new, |origin| {
+                if origin.get_name() == "Human" {
                     vec![]
                 } else {
-                    vec![race.get_special_action()]
+                    vec![origin.get_special_action()]
                 }
             })
             .into_iter()
@@ -76,12 +76,12 @@ impl Character {
         (primary_actions, secondary_actions, special_actions)
     }
 
-    pub fn get_race(&self) -> Option<String> {
-        self.race.clone()
+    pub fn get_origin(&self) -> Option<String> {
+        self.origin.clone()
     }
 
-    pub fn replace_race(&mut self, new_race: Option<String>) {
-        self.race = new_race;
+    pub fn replace_origin(&mut self, new_origin: Option<String>) {
+        self.origin = new_origin;
     }
 
     pub fn get_classes(&self) -> Vec<String> {

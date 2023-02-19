@@ -53,17 +53,17 @@ impl Class {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ClassCache {
-    races: Vec<Class>,
+    origins: Vec<Class>,
     classes: Vec<Class>,
 }
 
 impl ClassCache {
-    pub fn new(races: Vec<Class>, classes: Vec<Class>) -> ClassCache {
-        ClassCache { races, classes }
+    pub fn new(origins: Vec<Class>, classes: Vec<Class>) -> ClassCache {
+        ClassCache { origins, classes }
     }
 
-    pub fn get_races(&self) -> Vec<Class> {
-        self.races.clone()
+    pub fn get_origins(&self) -> Vec<Class> {
+        self.origins.clone()
     }
 
     pub fn get_classes(&self) -> Vec<Class> {

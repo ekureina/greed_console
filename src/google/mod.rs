@@ -106,9 +106,9 @@ fn get_class(first_line: &str, mut paragraphs: impl Iterator<Item = String>) -> 
 }
 
 #[allow(clippy::let_underscore_drop)]
-fn get_race(first_line: &str, mut paragraphs: impl Iterator<Item = String>) -> Class {
-    let race_name = first_line.split_whitespace().collect::<Vec<&str>>()[0].to_string();
-    if race_name == "Human" {
+fn get_origin(first_line: &str, mut paragraphs: impl Iterator<Item = String>) -> Class {
+    let origin_name = first_line.split_whitespace().collect::<Vec<&str>>()[0].to_string();
+    if origin_name == "Human" {
         Class::new(
             String::from("Human"),
             PrimaryAction::new(String::new(), String::new()),
@@ -154,7 +154,7 @@ fn get_race(first_line: &str, mut paragraphs: impl Iterator<Item = String>) -> C
             .trim_end()
             .to_owned();
         Class::new(
-            race_name,
+            origin_name,
             PrimaryAction::new(primary_name, primary_description),
             SecondaryAction::new(secondary_name, secondary_description),
             SpecialAction::new(special_name, special_description),
@@ -183,16 +183,16 @@ fn convert_to_lines(doc: Document) -> Vec<String> {
 }
 
 #[allow(clippy::skip_while_next)]
-pub async fn get_races_and_classes() -> (Vec<Class>, Vec<Class>) {
+pub async fn get_origins_and_classes() -> (Vec<Class>, Vec<Class>) {
     let document = get_document().await;
 
     let mut lines = convert_to_lines(document).into_iter();
 
-    let mut races = Vec::<Class>::new();
+    let mut origins = Vec::<Class>::new();
     let mut line = lines.next();
     while !line.as_ref().unwrap().starts_with("Template") {
-        let race = get_race(&line.unwrap(), lines.by_ref());
-        if race.clone().get_name() == "Human" {
+        let origin = get_origin(&line.unwrap(), lines.by_ref());
+        if origin.clone().get_name() == "Human" {
             line = lines
                 .by_ref()
                 .skip_while(|paragraph| !paragraph.starts_with("Dwarf"))
@@ -203,7 +203,7 @@ pub async fn get_races_and_classes() -> (Vec<Class>, Vec<Class>) {
                 .skip_while(|paragraph| paragraph.trim().is_empty())
                 .next();
         }
-        races.push(race);
+        origins.push(origin);
     }
 
     let _ = lines
@@ -217,5 +217,5 @@ pub async fn get_races_and_classes() -> (Vec<Class>, Vec<Class>) {
         classes.push(class);
         line = lines.by_ref().skip_while(|line| !line.contains('(')).next();
     }
-    (races, classes)
+    (origins, classes)
 }

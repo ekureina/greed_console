@@ -24,7 +24,7 @@ pub struct GuiGreedApp {
     special_add_text_buffer: String,
     special_add_description_text_buffer: String,
     class_cache: ClassCache,
-    character_race: Option<Class>,
+    character_origin: Option<Class>,
     character_classes: Vec<Class>,
 }
 
@@ -49,11 +49,11 @@ impl GuiGreedApp {
             game_state.push_special(action);
         }
 
-        let character_race = character.get_race().and_then(|race_name| {
+        let character_origin = character.get_origin().and_then(|origin_name| {
             class_cache
-                .get_races()
+                .get_origins()
                 .iter()
-                .find(|race| race.get_name() == race_name.clone())
+                .find(|origin| origin.get_name() == origin_name.clone())
                 .map(std::clone::Clone::clone)
         });
 
@@ -76,7 +76,7 @@ impl GuiGreedApp {
             primary_actions,
             secondary_actions,
             class_cache,
-            character_race,
+            character_origin,
             character_classes,
             ..Default::default()
         }
@@ -184,12 +184,12 @@ impl GuiGreedApp {
                             });
                         }
                         ui.menu_button("Origin", |ui| {
-                            let old_race = self.character_race.clone();
-                            for race in &self.class_cache.get_races() {
-                                ui.radio_value(&mut self.character_race, Some(race.clone()), race.get_name());
+                            let old_origin = self.character_origin.clone();
+                            for origin in &self.class_cache.get_origins() {
+                                ui.radio_value(&mut self.character_origin, Some(origin.clone()), origin.get_name());
                             }
-                            if self.character_race != old_race {
-                                self.change_race(old_race, self.character_race.clone());
+                            if self.character_origin != old_origin {
+                                self.change_origin(old_origin, self.character_origin.clone());
                             }
                         });
                     });
@@ -206,8 +206,8 @@ impl GuiGreedApp {
                     ui.menu_button("Stats", |ui| self.stats_panel(ui));
                     if ui.button("Refresh Rules").clicked() {
                         let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-                        let (races, classes) = rt.block_on(crate::google::get_races_and_classes());
-                        self.class_cache = ClassCache::new(races, classes);
+                        let (origins, classes) = rt.block_on(crate::google::get_origins_and_classes());
+                        self.class_cache = ClassCache::new(origins, classes);
                         eframe::set_value(frame.storage_mut().unwrap(), "class_cache", &self.class_cache);
                         if let Some(campaign_name) = self.app_state.get_current_campaign_name() {
                             self.switch_campaign(campaign_name);
@@ -294,15 +294,15 @@ impl GuiGreedApp {
         self.primary_actions = primary;
         self.secondary_actions = secondary;
         self.game_state = GameState::default();
-        let old_race = self.character_race.clone();
-        let new_race = current_campaign.get_race().and_then(|race_name| {
+        let old_origin = self.character_origin.clone();
+        let new_origin = current_campaign.get_origin().and_then(|origin_name| {
             self.class_cache
-                .get_races()
+                .get_origins()
                 .iter()
-                .find(|race| race.get_name() == race_name)
+                .find(|origin| origin.get_name() == origin_name)
                 .map(std::clone::Clone::clone)
         });
-        self.change_race(old_race, new_race);
+        self.change_origin(old_origin, new_origin);
         for action in special {
             self.game_state.push_special(action);
         }
@@ -433,19 +433,19 @@ impl GuiGreedApp {
         self.character_classes.push(class);
     }
 
-    fn change_race(&mut self, old_race: Option<Class>, new_race: Option<Class>) {
-        if let Some(race) = old_race {
+    fn change_origin(&mut self, old_origin: Option<Class>, new_origin: Option<Class>) {
+        if let Some(origin) = old_origin {
             if let Some(primary_index) = self
                 .primary_actions
                 .iter()
-                .position(|action| action.clone() == race.get_primary_action())
+                .position(|action| action.clone() == origin.get_primary_action())
             {
                 self.primary_actions.remove(primary_index);
             }
             if let Some(secondary_index) = self
                 .secondary_actions
                 .iter()
-                .position(|action| action.clone() == race.get_secondary_action())
+                .position(|action| action.clone() == origin.get_secondary_action())
             {
                 self.secondary_actions.remove(secondary_index);
             }
@@ -453,23 +453,23 @@ impl GuiGreedApp {
                 .game_state
                 .get_special_actions()
                 .iter()
-                .position(|action| action.clone() == race.get_special_action())
+                .position(|action| action.clone() == origin.get_special_action())
             {
                 self.game_state.remove_special_action(special_index);
             }
         }
-        if let Some(new_race) = new_race.clone() {
-            if new_race.get_name() != "Human" {
+        if let Some(new_origin) = new_origin.clone() {
+            if new_origin.get_name() != "Human" {
                 self.primary_actions
-                    .insert(0, new_race.get_primary_action());
+                    .insert(0, new_origin.get_primary_action());
                 self.secondary_actions
-                    .insert(0, new_race.get_secondary_action());
+                    .insert(0, new_origin.get_secondary_action());
                 self.game_state
-                    .insert_special(0, new_race.get_special_action());
+                    .insert_special(0, new_origin.get_special_action());
             }
         }
         if let Some(campaign) = self.app_state.get_current_campaign_mut() {
-            campaign.replace_race(new_race.map(|class| class.get_name()));
+            campaign.replace_origin(new_origin.map(|class| class.get_name()));
         }
     }
 
