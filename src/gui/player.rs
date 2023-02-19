@@ -366,6 +366,7 @@ impl GuiGreedApp {
                         egui::Button::new(action.get_name()),
                     )
                     .on_hover_text(action.get_description())
+                    .on_disabled_hover_text(action.get_description())
                     .clicked()
                     && action.get_name() != "Execute"
                 {
@@ -389,6 +390,7 @@ impl GuiGreedApp {
                         egui::Button::new(action.get_name()),
                     )
                     .on_hover_text(action.get_description())
+                    .on_disabled_hover_text(action.get_description())
                     .clicked()
                 {
                     self.game_state.use_secondary();
@@ -408,6 +410,7 @@ impl GuiGreedApp {
                         egui::Button::new(action.get_name()),
                     )
                     .on_hover_text(action.get_description())
+                    .on_disabled_hover_text(action.get_description())
                     .clicked()
                 {
                     self.game_state.use_special(action.get_name());
