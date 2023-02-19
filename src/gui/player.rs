@@ -60,7 +60,7 @@ pub struct GuiGreedApp {
     character_origin: Option<Class>,
     character_classes: Vec<Class>,
     rule_refresh_runtime: Runtime,
-    rule_refresh_handle: RefCell<Option<JoinHandle<(Vec<Class>, Vec<Class>)>>>,
+    rule_refresh_handle: RefCell<Option<JoinHandle<ClassCache>>>,
 }
 
 impl GuiGreedApp {
@@ -288,8 +288,7 @@ impl GuiGreedApp {
             if self.rule_refresh_handle.borrow().as_ref().unwrap().is_finished() {
                 info!("Rules refreshed...");
                 let refresh_handle = self.rule_refresh_handle.replace(None);
-                let (origins, classes) = self.rule_refresh_runtime.block_on(async { join!(refresh_handle.unwrap()) }).0.unwrap();
-                self.class_cache = ClassCache::new(origins, classes);
+                self.class_cache = self.rule_refresh_runtime.block_on(async { join!(refresh_handle.unwrap()) }).0.unwrap();
                 eframe::set_value(frame.storage_mut().unwrap(), "class_cache", &self.class_cache);
                 if let Some(campaign_name) = self.app_state.get_current_campaign_name() {
                     self.switch_campaign(campaign_name);

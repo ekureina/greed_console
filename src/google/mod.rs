@@ -1,5 +1,5 @@
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
-use crate::model::classes::Class;
+use crate::model::classes::{Class, ClassCache};
 
 use google_docs1::api::Document;
 use google_docs1::oauth2::{self, ServiceAccountAuthenticator};
@@ -201,7 +201,7 @@ fn convert_to_lines(doc: Document) -> Vec<String> {
 }
 
 #[allow(clippy::skip_while_next)]
-pub async fn get_origins_and_classes() -> (Vec<Class>, Vec<Class>) {
+pub async fn get_origins_and_classes() -> ClassCache {
     let document = get_document().await;
 
     let mut lines = convert_to_lines(document).into_iter();
@@ -235,5 +235,5 @@ pub async fn get_origins_and_classes() -> (Vec<Class>, Vec<Class>) {
         classes.push(class);
         line = lines.by_ref().skip_while(|line| !line.contains('(')).next();
     }
-    (origins, classes)
+    ClassCache::new(origins, classes)
 }
