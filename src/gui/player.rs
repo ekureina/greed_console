@@ -28,6 +28,24 @@ use std::time::Duration;
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+static COPYRIGHT_NOTICE: &str = "
+A console and digital character sheet for campaigns under the greed ruleset.
+Copyright (C) 2023 Claire Moore
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+";
+
 #[derive(Default)]
 pub struct GuiGreedApp {
     game_state: GameState,
@@ -152,6 +170,16 @@ impl GuiGreedApp {
             .resizable(false)
             .show(ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
+                    let about_response = ui.button("About");
+                    let about_popup_id = ui.make_persistent_id("about_popup_id");
+                    if about_response.clicked() {
+                        ui.memory().toggle_popup(about_popup_id);
+                    }
+                    egui::popup_below_widget(ui, about_popup_id, &about_response, |ui| {
+                        ui.set_min_width(450.0);
+                        ui.label(COPYRIGHT_NOTICE);
+                    });
+
                     ui.menu_button("Campaign", |ui| {
                         ui.set_min_width(200.0);
                         ui.menu_button("New", |ui| {
