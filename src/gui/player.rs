@@ -341,7 +341,6 @@ impl GuiGreedApp {
         self.primary_actions = primary;
         self.secondary_actions = secondary;
         self.game_state = GameState::default();
-        let old_origin = self.character_origin.clone();
         let new_origin = current_campaign.get_origin().and_then(|origin_name| {
             self.class_cache
                 .get_origins()

@@ -1,5 +1,5 @@
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
-use crate::model::classes::{Class, ClassCache};
+use crate::model::classes::{Class, ClassCache, ClassPassive, ClassUtility};
 
 use google_docs1::api::Document;
 use google_docs1::oauth2::{self, ServiceAccountAuthenticator};
@@ -79,15 +79,15 @@ fn get_class(first_line: &str, mut paragraphs: impl Iterator<Item = String>) -> 
     };
 
     paragraphs.next().unwrap();
-    let _ = paragraphs.next().unwrap().trim_end().to_owned();
-    let _ = paragraphs
+    let utility_name = paragraphs.next().unwrap().trim_end().to_owned();
+    let utility_description = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Passive"))
         .collect::<String>()
         .trim_end()
         .to_owned();
-    let _ = paragraphs.next().unwrap().trim_end().to_owned();
-    let _ = paragraphs
+    let passive_name = paragraphs.next().unwrap().trim_end().to_owned();
+    let passive_description = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Primary"))
         .collect::<String>()
@@ -116,6 +116,8 @@ fn get_class(first_line: &str, mut paragraphs: impl Iterator<Item = String>) -> 
         .to_owned();
     Class::new(
         class_name,
+        ClassUtility::new(utility_name, utility_description),
+        ClassPassive::new(passive_name, passive_description),
         PrimaryAction::new(primary_name, primary_description),
         SecondaryAction::new(secondary_name, secondary_description),
         SpecialAction::new(special_name, special_description),
@@ -129,6 +131,8 @@ fn get_origin(first_line: &str, mut paragraphs: impl Iterator<Item = String>) ->
     if origin_name == "Human" {
         Class::new(
             String::from("Human"),
+            ClassUtility::new(String::new(), String::new()),
+            ClassPassive::new(String::new(), String::new()),
             PrimaryAction::new(String::new(), String::new()),
             SecondaryAction::new(String::new(), String::new()),
             SpecialAction::new(String::new(), String::new()),
@@ -136,15 +140,15 @@ fn get_origin(first_line: &str, mut paragraphs: impl Iterator<Item = String>) ->
         )
     } else {
         paragraphs.next().unwrap();
-        let _ = paragraphs.next().unwrap().trim_end().to_owned();
-        let _ = paragraphs
+        let utility_name = paragraphs.next().unwrap().trim_end().to_owned();
+        let utility_description = paragraphs
             .by_ref()
             .take_while(|line| !line.starts_with("Passive"))
             .collect::<String>()
             .trim_end()
             .to_owned();
-        let _ = paragraphs.next().unwrap().trim_end().to_owned();
-        let _ = paragraphs
+        let passive_name = paragraphs.next().unwrap().trim_end().to_owned();
+        let passive_description = paragraphs
             .by_ref()
             .take_while(|line| !line.starts_with("Primary"))
             .collect::<String>()
@@ -173,6 +177,8 @@ fn get_origin(first_line: &str, mut paragraphs: impl Iterator<Item = String>) ->
             .to_owned();
         Class::new(
             origin_name,
+            ClassUtility::new(utility_name, utility_description),
+            ClassPassive::new(passive_name, passive_description),
             PrimaryAction::new(primary_name, primary_description),
             SecondaryAction::new(secondary_name, secondary_description),
             SpecialAction::new(special_name, special_description),

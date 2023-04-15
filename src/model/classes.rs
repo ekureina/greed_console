@@ -21,8 +21,56 @@ use serde::{Deserialize, Serialize};
  */
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ClassUtility {
+    name: String,
+    description: String,
+}
+
+impl ClassUtility {
+    pub fn new<N: Into<String>, D: Into<String>>(name: N, description: D) -> Self {
+        ClassUtility {
+            name: name.into(),
+            description: description.into(),
+        }
+    }
+
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn get_description(&self) -> String {
+        self.description.clone()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ClassPassive {
+    name: String,
+    description: String,
+}
+
+impl ClassPassive {
+    pub fn new<N: Into<String>, D: Into<String>>(name: N, description: D) -> Self {
+        ClassPassive {
+            name: name.into(),
+            description: description.into(),
+        }
+    }
+
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn get_description(&self) -> String {
+        self.description.clone()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Class {
     name: String,
+    utility: ClassUtility,
+    passive: ClassPassive,
     primary_action: PrimaryAction,
     secondary_action: SecondaryAction,
     special_action: SpecialAction,
@@ -32,6 +80,8 @@ pub struct Class {
 impl Class {
     pub fn new<N: Into<String>>(
         name: N,
+        utility: ClassUtility,
+        passive: ClassPassive,
         primary_action: PrimaryAction,
         secondary_action: SecondaryAction,
         special_action: SpecialAction,
@@ -39,6 +89,8 @@ impl Class {
     ) -> Class {
         Class {
             name: name.into(),
+            utility,
+            passive,
             primary_action,
             secondary_action,
             special_action,
