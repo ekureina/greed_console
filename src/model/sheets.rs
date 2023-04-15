@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     actions::{PrimaryAction, SecondaryAction, SpecialAction},
-    classes::{Class, ClassCache},
+    classes::{Class, ClassCache, ClassPassive, ClassUtility},
 };
 
 /*
@@ -33,7 +33,13 @@ impl Character {
     pub fn get_all_actions(
         &self,
         class_cache: &ClassCache,
-    ) -> (Vec<PrimaryAction>, Vec<SecondaryAction>, Vec<SpecialAction>) {
+    ) -> (
+        Vec<ClassUtility>,
+        Vec<ClassPassive>,
+        Vec<PrimaryAction>,
+        Vec<SecondaryAction>,
+        Vec<SpecialAction>,
+    ) {
         let character_origin = self.get_origin().and_then(|origin_name| {
             class_cache
                 .get_origins()
@@ -52,6 +58,32 @@ impl Character {
                     .cloned()
             })
             .collect::<Vec<Class>>();
+
+        let utilities = character_origin
+            .clone()
+            .map_or_else(Vec::new, |origin| {
+                if origin.get_name() == "Human" {
+                    vec![]
+                } else {
+                    vec![origin.get_utility()]
+                }
+            })
+            .into_iter()
+            .chain(character_classes.iter().map(Class::get_utility))
+            .collect();
+
+        let passives = character_origin
+            .clone()
+            .map_or_else(Vec::new, |origin| {
+                if origin.get_name() == "Human" {
+                    vec![]
+                } else {
+                    vec![origin.get_passive()]
+                }
+            })
+            .into_iter()
+            .chain(character_classes.iter().map(Class::get_passive))
+            .collect();
 
         let primary_actions = character_origin
             .clone()
@@ -91,7 +123,13 @@ impl Character {
             .chain(character_classes.iter().map(Class::get_special_action))
             .collect();
 
-        (primary_actions, secondary_actions, special_actions)
+        (
+            utilities,
+            passives,
+            primary_actions,
+            secondary_actions,
+            special_actions,
+        )
     }
 
     pub fn get_origin(&self) -> Option<String> {

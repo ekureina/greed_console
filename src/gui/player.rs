@@ -76,7 +76,7 @@ impl GuiGreedApp {
             .map(Clone::clone)
             .unwrap_or_default();
 
-        let (primary_actions, secondary_actions, special_actions) =
+        let (_, _, primary_actions, secondary_actions, special_actions) =
             character.get_all_actions(&class_cache);
 
         let mut game_state = GameState::default();
@@ -337,7 +337,7 @@ impl GuiGreedApp {
     fn switch_campaign(&mut self, new_campaign_name: String) {
         self.app_state.set_current_campaign(new_campaign_name);
         let current_campaign = self.app_state.get_current_campaign().unwrap();
-        let (primary, secondary, special) = current_campaign.get_all_actions(&self.class_cache);
+        let (_, _, primary, secondary, special) = current_campaign.get_all_actions(&self.class_cache);
         self.primary_actions = primary;
         self.secondary_actions = secondary;
         self.game_state = GameState::default();

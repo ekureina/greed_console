@@ -102,6 +102,14 @@ impl Class {
         self.name.clone()
     }
 
+    pub fn get_utility(&self) -> ClassUtility {
+        self.utility.clone()
+    }
+
+    pub fn get_passive(&self) -> ClassPassive {
+        self.passive.clone()
+    }
+
     pub fn get_primary_action(&self) -> PrimaryAction {
         self.primary_action.clone()
     }
