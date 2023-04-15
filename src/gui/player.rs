@@ -55,6 +55,7 @@ pub struct GuiGreedApp {
     app_state: AppState,
     new_campaign_text: String,
     utilities: Vec<ClassUtility>,
+    show_utilities: bool,
     passives: Vec<ClassPassive>,
     primary_actions: Vec<PrimaryAction>,
     secondary_actions: Vec<SecondaryAction>,
@@ -117,6 +118,7 @@ impl GuiGreedApp {
             app_state,
             new_campaign_text: String::default(),
             utilities,
+            show_utilities: true,
             passives,
             primary_actions,
             secondary_actions,
@@ -201,6 +203,9 @@ impl GuiGreedApp {
                         self.campaign_menu(ui);
                     });
 
+                    ui.menu_button("View", |ui| {
+                        self.view_menu(ui);
+                    });
 
                     ui.menu_button("Actions", |ui| {
                         if ui.button("Refresh Secondary Action").clicked() {
@@ -294,6 +299,10 @@ impl GuiGreedApp {
                 self.change_origin(old_origin, self.character_origin.clone());
             }
         });
+    }
+
+    fn view_menu(&mut self, ui: &mut egui::Ui) {
+        ui.checkbox(&mut self.show_utilities, "Utilities");
     }
 
     fn next_part_buttons(&mut self, ui: &mut egui::Ui) {
@@ -408,7 +417,7 @@ impl GuiGreedApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::both().show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    if !self.utilities.is_empty() {
+                    if !self.utilities.is_empty() && self.show_utilities {
                         ui.vertical(|ui| {
                             self.utility_panel(ui);
                         });
