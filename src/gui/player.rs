@@ -349,7 +349,9 @@ impl GuiGreedApp {
                 .find(|origin| origin.get_name() == origin_name)
                 .map(std::clone::Clone::clone)
         });
-        self.change_origin(old_origin, new_origin);
+        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+            campaign.replace_origin(new_origin.map(|class| class.get_name()));
+        }
         for action in special {
             self.game_state.push_special(action);
         }
