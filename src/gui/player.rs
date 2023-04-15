@@ -198,71 +198,25 @@ impl GuiGreedApp {
                     });
 
                     ui.menu_button("Campaign", |ui| {
-                        ui.set_min_width(200.0);
-                        ui.menu_button("New", |ui| {
-                            if (ui
-                                .text_edit_singleline(&mut self.new_campaign_text)
-                                .lost_focus()
-                                || ui.button("Create").clicked())
-                                && !self.new_campaign_text.is_empty()
-                            {
-                                info!("New Campaign: {}", self.new_campaign_text);
-                                if !self
-                                    .app_state
-                                    .get_campaign_exists(self.new_campaign_text.clone())
-                                {
-                                    self.app_state
-                                        .create_campaign(self.new_campaign_text.clone());
-                                    self.switch_campaign(self.new_campaign_text.clone());
-                                }
-                                self.new_campaign_text.clear();
-                                ui.close_menu();
-                            }
-                        });
-                        if self.app_state.get_campaign_names().iter().any(|name| *name.clone() != self.app_state.get_current_campaign_name().unwrap_or_else(|| "None".to_owned())) {
-                            ui.menu_button("Switch", |ui| {
-                                for campaign in self.app_state.get_campaign_names() {
-                                    if self.app_state.get_current_campaign_name().is_some() && self.app_state.get_current_campaign_name().unwrap() != campaign && ui.button(campaign.clone()).clicked() {
-                                        self.switch_campaign(campaign);
-                                        ui.close_menu();
-                                    }
-                                }
-                            });
-                        }
-                        if !self.app_state.get_campaign_names().is_empty() {
-                            ui.menu_button("Remove", |ui| {
-                                for campaign in self.app_state.get_campaign_names() {
-                                    if ui.button(campaign.clone()).clicked() {
-                                        self.app_state.remove_campaign(campaign);
-                                        ui.close_menu();
-                                    }
-                                }
-                            });
-                        }
-                        ui.menu_button("Origin", |ui| {
-                            let old_origin = self.character_origin.clone();
-                            for origin in &self.class_cache.get_origins() {
-                                ui.radio_value(&mut self.character_origin, Some(origin.clone()), origin.get_name());
-                            }
-                            if self.character_origin != old_origin {
-                                self.change_origin(old_origin, self.character_origin.clone());
-                            }
-                        });
+                        self.campaign_menu(ui);
                     });
 
-                    if ui.button("Refresh Secondary Action").clicked() {
-                        self.game_state.extra_secondary();
-                    }
 
-                    if self
-                        .game_state
-                        .get_special_actions()
-                        .iter()
-                        .any(SpecialAction::is_usable)
-                        && ui.button("Exhaust All Specials").clicked()
-                    {
-                        self.game_state.exhaust_specials();
-                    }
+                    ui.menu_button("Actions", |ui| {
+                        if ui.button("Refresh Secondary Action").clicked() {
+                            self.game_state.extra_secondary();
+                        }
+
+                        if self
+                            .game_state
+                            .get_special_actions()
+                            .iter()
+                            .any(SpecialAction::is_usable)
+                            && ui.button("Exhaust All Specials").clicked()
+                        {
+                            self.game_state.exhaust_specials();
+                        }
+                    });
 
                     ui.menu_button("Classes", |ui| self.classes_menu(ui));
                     self.next_part_buttons(ui);
@@ -274,6 +228,72 @@ impl GuiGreedApp {
                     ui.hyperlink_to("Greed Rulset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
                 });
             });
+    }
+
+    fn campaign_menu(&mut self, ui: &mut egui::Ui) {
+        ui.set_min_width(200.0);
+        ui.menu_button("New", |ui| {
+            if (ui
+                .text_edit_singleline(&mut self.new_campaign_text)
+                .lost_focus()
+                || ui.button("Create").clicked())
+                && !self.new_campaign_text.is_empty()
+            {
+                info!("New Campaign: {}", self.new_campaign_text);
+                if !self
+                    .app_state
+                    .get_campaign_exists(self.new_campaign_text.clone())
+                {
+                    self.app_state
+                        .create_campaign(self.new_campaign_text.clone());
+                    self.switch_campaign(self.new_campaign_text.clone());
+                }
+                self.new_campaign_text.clear();
+                ui.close_menu();
+            }
+        });
+        if self.app_state.get_campaign_names().iter().any(|name| {
+            *name.clone()
+                != self
+                    .app_state
+                    .get_current_campaign_name()
+                    .unwrap_or_else(|| "None".to_owned())
+        }) {
+            ui.menu_button("Switch", |ui| {
+                for campaign in self.app_state.get_campaign_names() {
+                    if self.app_state.get_current_campaign_name().is_some()
+                        && self.app_state.get_current_campaign_name().unwrap() != campaign
+                        && ui.button(campaign.clone()).clicked()
+                    {
+                        self.switch_campaign(campaign);
+                        ui.close_menu();
+                    }
+                }
+            });
+        }
+        if !self.app_state.get_campaign_names().is_empty() {
+            ui.menu_button("Remove", |ui| {
+                for campaign in self.app_state.get_campaign_names() {
+                    if ui.button(campaign.clone()).clicked() {
+                        self.app_state.remove_campaign(campaign);
+                        ui.close_menu();
+                    }
+                }
+            });
+        }
+        ui.menu_button("Origin", |ui| {
+            let old_origin = self.character_origin.clone();
+            for origin in &self.class_cache.get_origins() {
+                ui.radio_value(
+                    &mut self.character_origin,
+                    Some(origin.clone()),
+                    origin.get_name(),
+                );
+            }
+            if self.character_origin != old_origin {
+                self.change_origin(old_origin, self.character_origin.clone());
+            }
+        });
     }
 
     fn next_part_buttons(&mut self, ui: &mut egui::Ui) {
