@@ -1,6 +1,6 @@
 use super::state::AppState;
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
-use crate::model::classes::{Class, ClassCache};
+use crate::model::classes::{Class, ClassCache, ClassPassive, ClassUtility};
 use crate::model::game_state::GameState;
 
 use eframe::egui;
@@ -54,6 +54,8 @@ pub struct GuiGreedApp {
     game_state: GameState,
     app_state: AppState,
     new_campaign_text: String,
+    utilities: Vec<ClassUtility>,
+    passives: Vec<ClassPassive>,
     primary_actions: Vec<PrimaryAction>,
     secondary_actions: Vec<SecondaryAction>,
     class_cache: ClassCache,
@@ -76,7 +78,7 @@ impl GuiGreedApp {
             .map(Clone::clone)
             .unwrap_or_default();
 
-        let (_, _, primary_actions, secondary_actions, special_actions) =
+        let (utilities, passives, primary_actions, secondary_actions, special_actions) =
             character.get_all_actions(&class_cache);
 
         let mut game_state = GameState::default();
@@ -104,12 +106,18 @@ impl GuiGreedApp {
             })
             .collect();
 
-        let rule_refresh_runtime = tokio::runtime::Builder::new_multi_thread().thread_name("rules-refresh-worker").enable_all().build().unwrap();
+        let rule_refresh_runtime = tokio::runtime::Builder::new_multi_thread()
+            .thread_name("rules-refresh-worker")
+            .enable_all()
+            .build()
+            .unwrap();
 
         GuiGreedApp {
             game_state,
             app_state,
             new_campaign_text: String::default(),
+            utilities,
+            passives,
             primary_actions,
             secondary_actions,
             class_cache,
@@ -241,11 +249,11 @@ impl GuiGreedApp {
                             }
                         });
                     });
-                    
+
                     if ui.button("Refresh Secondary Action").clicked() {
                         self.game_state.extra_secondary();
                     }
-                    
+
                     if self
                         .game_state
                         .get_special_actions()
@@ -281,15 +289,32 @@ impl GuiGreedApp {
     fn refresh_rules(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         if ui.button("Refresh Rules").clicked() {
             info!("Started refreshing rules!");
-            self.rule_refresh_handle = RefCell::new(Some(self.rule_refresh_runtime.spawn(crate::google::get_origins_and_classes())));
+            self.rule_refresh_handle = RefCell::new(Some(
+                self.rule_refresh_runtime
+                    .spawn(crate::google::get_origins_and_classes()),
+            ));
         }
         if self.rule_refresh_handle.borrow().is_some() {
             info!("Refreshing rules!");
-            if self.rule_refresh_handle.borrow().as_ref().unwrap().is_finished() {
+            if self
+                .rule_refresh_handle
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .is_finished()
+            {
                 info!("Rules refreshed...");
                 let refresh_handle = self.rule_refresh_handle.replace(None);
-                self.class_cache = self.rule_refresh_runtime.block_on(async { join!(refresh_handle.unwrap()) }).0.unwrap();
-                eframe::set_value(frame.storage_mut().unwrap(), "class_cache", &self.class_cache);
+                self.class_cache = self
+                    .rule_refresh_runtime
+                    .block_on(async { join!(refresh_handle.unwrap()) })
+                    .0
+                    .unwrap();
+                eframe::set_value(
+                    frame.storage_mut().unwrap(),
+                    "class_cache",
+                    &self.class_cache,
+                );
                 if let Some(campaign_name) = self.app_state.get_current_campaign_name() {
                     self.switch_campaign(campaign_name);
                 }
@@ -337,9 +362,12 @@ impl GuiGreedApp {
     fn switch_campaign(&mut self, new_campaign_name: String) {
         self.app_state.set_current_campaign(new_campaign_name);
         let current_campaign = self.app_state.get_current_campaign().unwrap();
-        let (_, _, primary, secondary, special) = current_campaign.get_all_actions(&self.class_cache);
+        let (utility, passive, primary, secondary, special) =
+            current_campaign.get_all_actions(&self.class_cache);
         self.primary_actions = primary;
         self.secondary_actions = secondary;
+        self.utilities = utility;
+        self.passives = passive;
         self.game_state = GameState::default();
         let new_origin = current_campaign.get_origin().and_then(|origin_name| {
             self.class_cache
@@ -360,6 +388,16 @@ impl GuiGreedApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::both().show(ui, |ui| {
                 ui.horizontal(|ui| {
+                    if !self.utilities.is_empty() {
+                        ui.vertical(|ui| {
+                            self.utility_panel(ui);
+                        });
+                    }
+                    if !self.passives.is_empty() {
+                        ui.vertical(|ui| {
+                            self.passive_panel(ui);
+                        });
+                    }
                     // List of all non-Execute primary actions
                     if self.primary_actions.len() > 1
                         || (self.primary_actions.len() == 1
@@ -397,6 +435,28 @@ impl GuiGreedApp {
                     self.game_state.use_inspiration();
                 }
             });
+        });
+    }
+
+    fn utility_panel(&mut self, ui: &mut egui::Ui) {
+        ui.set_width(ui.available_width() / 5.0);
+        ui.group(|ui| {
+            ui.label("Utilities:");
+            for utility in &self.utilities {
+                ui.label(utility.get_name())
+                    .on_hover_text(utility.get_description());
+            }
+        });
+    }
+
+    fn passive_panel(&mut self, ui: &mut egui::Ui) {
+        ui.set_width(ui.available_width() / 4.0);
+        ui.group(|ui| {
+            ui.label("Passives:");
+            for passive in &self.passives {
+                ui.label(passive.get_name())
+                    .on_hover_text(passive.get_description());
+            }
         });
     }
 
