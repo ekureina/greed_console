@@ -618,6 +618,20 @@ impl GuiGreedApp {
     }
 
     fn remove_class(&mut self, class: &Class) {
+        if let Some(utility_index) = self
+            .utilities
+            .iter()
+            .position(|action| action.clone() == class.get_utility())
+        {
+            self.utilities.remove(utility_index);
+        }
+        if let Some(passive_index) = self
+            .passives
+            .iter()
+            .position(|action| action.clone() == class.get_passive())
+        {
+            self.passives.remove(passive_index);
+        }
         if let Some(primary_index) = self
             .primary_actions
             .iter()
