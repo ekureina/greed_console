@@ -194,11 +194,19 @@ fn convert_to_lines(doc: Document) -> Vec<String> {
         .iter()
         .filter_map(|element| {
             element.paragraph.as_ref().and_then(|p| {
-                p.elements.as_ref().map(|e| {
-                    e.iter()
-                        .filter_map(|pe| pe.text_run.as_ref().and_then(|tr| tr.content.clone()))
-                        .collect::<String>()
-                })
+                let bullet_text = p.bullet.clone().map_or_else(String::new, |b| {
+                    b.nesting_level.map_or_else(String::new, |il| {
+                        "\t".repeat((il - 1).try_into().unwrap_or(0)) + "- "
+                    })
+                });
+                p.elements
+                    .as_ref()
+                    .map(|e| {
+                        e.iter()
+                            .filter_map(|pe| pe.text_run.as_ref().and_then(|tr| tr.content.clone()))
+                            .collect::<String>()
+                    })
+                    .map(|text| bullet_text + &text)
             })
         })
         .skip_while(|paragraph| !paragraph.starts_with("Origins"))
