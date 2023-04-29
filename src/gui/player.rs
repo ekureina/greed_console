@@ -566,6 +566,8 @@ impl GuiGreedApp {
     }
 
     fn add_new_class(&mut self, class: Class) {
+        self.utilities.push(class.get_utility());
+        self.passives.push(class.get_passive());
         self.primary_actions.push(class.get_primary_action());
         self.secondary_actions.push(class.get_secondary_action());
         self.game_state.push_special(class.get_special_action());
