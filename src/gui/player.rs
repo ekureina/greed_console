@@ -192,7 +192,7 @@ impl GuiGreedApp {
                     let about_response = ui.button("About");
                     let about_popup_id = ui.make_persistent_id("about_popup_id");
                     if about_response.clicked() {
-                        ui.memory().toggle_popup(about_popup_id);
+                        ui.memory_mut(|mem| mem.toggle_popup(about_popup_id));
                     }
                     egui::popup_below_widget(ui, about_popup_id, &about_response, |ui| {
                         ui.set_min_width(450.0);

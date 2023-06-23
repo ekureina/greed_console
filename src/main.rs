@@ -62,5 +62,6 @@ fn main() {
             };
             Box::new(player::GuiGreedApp::new(cc, class_cache))
         }),
-    );
+    )
+    .unwrap();
 }
