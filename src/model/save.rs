@@ -25,7 +25,7 @@ pub enum SaveToFileError {
     WriteError(#[from] std::io::Error),
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Save {
     campaign_name: String,
     battle_number: Wrapping<u16>,

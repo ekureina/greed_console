@@ -1,4 +1,5 @@
 use super::state::AppState;
+use super::widgets::panels::StatsPanel;
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 use crate::model::classes::{Class, ClassCache, ClassPassive, ClassUtility};
 use crate::model::game_state::GameState;
@@ -167,60 +168,10 @@ impl GuiGreedApp {
     }
 
     fn stats_panel(&mut self, ui: &mut egui::Ui) {
-        ui.label(format!(
-            "Campaign: {}",
-            self.current_save
-                .as_ref()
-                .map_or_else(|| String::from("None"), Save::get_campaign_name)
+        ui.add(StatsPanel::new(
+            self.current_save.as_mut().unwrap(),
+            &mut self.game_state,
         ));
-        if let Some(save) = &self.current_save {
-            ui.label(format!("Batttle Number: {}", save.get_battle()));
-        }
-        ui.label(format!("Round Number: {}", self.game_state.get_round_num()));
-        ui.label(format!("Turn: {}", self.game_state.get_turn_side()));
-        ui.menu_button(format!("Power: {}", self.game_state.get_power()), |ui| {
-            if ui.button("Increment Power for Turn").clicked() {
-                self.game_state.change_power_for_turn(1);
-            }
-            if ui.button("Decrement Power for Turn").clicked() {
-                self.game_state.change_power_for_turn(-1);
-            }
-            if ui.button("Increment Power for Round").clicked() {
-                self.game_state.change_power_for_round(1);
-            }
-            if ui.button("Decrement Power for Round").clicked() {
-                self.game_state.change_power_for_round(-1);
-            }
-            if ui.button("Increment Power for Battle").clicked() {
-                self.game_state.change_power_for_battle(1);
-            }
-            if ui.button("Decrement Power for Battle").clicked() {
-                self.game_state.change_power_for_battle(-1);
-            }
-        });
-        ui.menu_button(
-            format!("Defense: {}", self.game_state.get_defense()),
-            |ui| {
-                if ui.button("Increment Defense for Turn").clicked() {
-                    self.game_state.change_defense_for_turn(1);
-                }
-                if ui.button("Decrement Defense for Turn").clicked() {
-                    self.game_state.change_defense_for_turn(-1);
-                }
-                if ui.button("Increment Defense for Round").clicked() {
-                    self.game_state.change_defense_for_round(1);
-                }
-                if ui.button("Decrement Defense for Round").clicked() {
-                    self.game_state.change_defense_for_round(-1);
-                }
-                if ui.button("Increment Defense for Battle").clicked() {
-                    self.game_state.change_defense_for_battle(1);
-                }
-                if ui.button("Decrement Defense for Battle").clicked() {
-                    self.game_state.change_defense_for_battle(-1);
-                }
-            },
-        );
     }
 
     fn menu_panel(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
