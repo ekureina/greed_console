@@ -68,11 +68,19 @@ impl Save {
         self.campaign_name.clone()
     }
 
+    pub fn get_battle(&self) -> u16 {
+        self.battle_number.0
+    }
+
     pub fn inc_battle(&mut self) {
         self.battle_number += 1;
         if self.battle_number == Wrapping(0) {
             self.battle_number = Wrapping(1);
         }
+    }
+
+    pub fn get_round(&self) -> u8 {
+        self.round_number
     }
 
     pub fn set_round(&mut self, round: u8) {
@@ -81,6 +89,18 @@ impl Save {
 
     pub fn use_special<N: Into<String>>(&mut self, name: N) {
         self.used_specials.insert(name.into());
+    }
+
+    pub fn refresh_special<N: Into<String>>(&mut self, name: N) {
+        self.used_specials.remove(&name.into());
+    }
+
+    pub fn refresh_specials(&mut self) {
+        self.used_specials.clear();
+    }
+
+    pub fn get_used_specials(&self) -> HashSet<String> {
+        self.used_specials.clone()
     }
 }
 

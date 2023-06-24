@@ -100,12 +100,18 @@ impl GuiGreedApp {
                     .ok()
             })
         {
+            game_state.set_round(save.get_round());
+
             let character = save.get_character();
 
-            let (utilities, passives, primary_actions, secondary_actions, special_actions) =
+            let (utilities, passives, primary_actions, secondary_actions, mut special_actions) =
                 character.get_all_actions(&class_cache);
-            for action in special_actions {
-                game_state.push_special(action);
+            let used_specials = save.get_used_specials();
+            for action in &mut special_actions {
+                if used_specials.contains(&action.get_name()) {
+                    action.use_action();
+                }
+                game_state.push_special(action.clone());
             }
             let character_origin = character.get_origin().and_then(|origin_name| {
                 class_cache
@@ -174,6 +180,9 @@ impl GuiGreedApp {
                 .as_ref()
                 .map_or_else(|| String::from("None"), Save::get_campaign_name)
         ));
+        if let Some(save) = &self.current_save {
+            ui.label(format!("Batttle Number: {}", save.get_battle()));
+        }
         ui.label(format!("Round Number: {}", self.game_state.get_round_num()));
         ui.label(format!("Turn: {}", self.game_state.get_turn_side()));
         ui.menu_button(format!("Power: {}", self.game_state.get_power()), |ui| {
@@ -283,6 +292,9 @@ impl GuiGreedApp {
                                 && ui.button("Exhaust All Specials").clicked()
                             {
                                 self.game_state.exhaust_specials();
+                                if let Some(save) = &mut self.current_save {
+                                self.game_state.get_special_actions().iter().for_each(|action| save.use_special(action.get_name()));
+                                    }
                             }
                         });
 
@@ -346,10 +358,17 @@ impl GuiGreedApp {
     fn next_part_buttons(&mut self, ui: &mut egui::Ui) {
         if ui.button("Next Battle").clicked() {
             self.game_state.next_battle();
+            if let Some(save) = &mut self.current_save {
+                save.refresh_specials();
+                save.inc_battle();
+            }
         }
 
         if ui.button("Next Turn").clicked() {
             self.game_state.next_turn();
+            if let Some(save) = &mut self.current_save {
+                save.set_round(self.game_state.get_round_num());
+            }
         }
     }
 
@@ -429,15 +448,19 @@ impl GuiGreedApp {
     fn refresh_campaign(&mut self) {
         if let Some(save) = self.current_save.clone() {
             let current_campaign = save.get_character();
-            let (utility, passive, primary, secondary, special) =
+            let (utility, passive, primary, secondary, mut special) =
                 current_campaign.get_all_actions(&self.class_cache);
             self.primary_actions = primary;
             self.secondary_actions = secondary;
             self.utilities = utility;
             self.passives = passive;
             self.game_state = GameState::default();
-            for action in special {
-                self.game_state.push_special(action);
+            let used_specials = save.get_used_specials();
+            for action in &mut special {
+                if used_specials.contains(&action.get_name()) {
+                    action.use_action();
+                }
+                self.game_state.push_special(action.clone());
             }
             let new_origin = current_campaign.get_origin().and_then(|origin_name| {
                 self.class_cache
@@ -447,6 +470,7 @@ impl GuiGreedApp {
                     .map(std::clone::Clone::clone)
             });
             self.character_origin = new_origin;
+            self.game_state.set_round(save.get_round());
         }
     }
 
@@ -589,6 +613,9 @@ impl GuiGreedApp {
                         .clicked()
                     {
                         self.game_state.use_special(action.get_name());
+                        if let Some(save) = &mut self.current_save {
+                            save.use_special(action.get_name());
+                        }
                         if action.is_named("Action Surge") {
                             self.game_state.extra_primary();
                             self.game_state.extra_primary();
@@ -596,6 +623,9 @@ impl GuiGreedApp {
                     }
                     if !action.is_usable() && ui.button("Refresh").clicked() {
                         self.refresh_special(action.get_name());
+                        if let Some(save) = &mut self.current_save {
+                            save.refresh_special(action.get_name());
+                        }
                     }
                 });
             }

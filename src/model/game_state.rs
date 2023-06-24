@@ -78,6 +78,12 @@ impl GameState {
         self.defense.next_round();
     }
 
+    pub fn set_round<R: Into<u8>>(&mut self, round: R) {
+        self.next_battle();
+        self.round_num = round.into();
+        self.turn_side = TurnSide::PlayerSide;
+    }
+
     /**
      * Resets the GameState for the next battle
      */
