@@ -29,17 +29,16 @@ pub struct Character {
     classes: Vec<String>,
 }
 
+type ActionOutput = (
+    Vec<ClassUtility>,
+    Vec<ClassPassive>,
+    Vec<PrimaryAction>,
+    Vec<SecondaryAction>,
+    Vec<SpecialAction>,
+);
+
 impl Character {
-    pub fn get_all_actions(
-        &self,
-        class_cache: &ClassCache,
-    ) -> (
-        Vec<ClassUtility>,
-        Vec<ClassPassive>,
-        Vec<PrimaryAction>,
-        Vec<SecondaryAction>,
-        Vec<SpecialAction>,
-    ) {
+    pub fn get_all_actions(&self, class_cache: &ClassCache) -> ActionOutput {
         let character_origin = self
             .get_origin()
             .and_then(|origin_name| class_cache.get_origin(origin_name.as_str()));
@@ -47,7 +46,6 @@ impl Character {
         let character_classes = class_cache.map_to_concrete_classes(self.get_classes());
 
         let utilities = character_origin
-            .clone()
             .map_or_else(Vec::new, |origin| {
                 if origin.get_name() == "Human" {
                     vec![]
@@ -60,7 +58,6 @@ impl Character {
             .collect();
 
         let passives = character_origin
-            .clone()
             .map_or_else(Vec::new, |origin| {
                 if origin.get_name() == "Human" {
                     vec![]
@@ -73,7 +70,6 @@ impl Character {
             .collect();
 
         let primary_actions = character_origin
-            .clone()
             .map_or_else(Vec::new, |origin| {
                 if origin.get_name() == "Human" {
                     vec![]
@@ -86,7 +82,6 @@ impl Character {
             .collect();
 
         let secondary_actions = character_origin
-            .clone()
             .map_or_else(Vec::new, |origin| {
                 if origin.get_name() == "Human" {
                     vec![]

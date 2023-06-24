@@ -563,7 +563,7 @@ mod tests {
         let mut state = GameState::default();
 
         for i in 0..500 {
-            state.push_special(SpecialAction::new(format!("Test{}", i), "Lorem ipsum"));
+            state.push_special(SpecialAction::new(format!("Test{i}"), "Lorem ipsum"));
         }
 
         assert_eq!(state.special_actions.len(), 500);

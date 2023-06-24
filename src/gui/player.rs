@@ -564,7 +564,7 @@ impl GuiGreedApp {
                         }
                     }
                     if !action.is_usable() && ui.button("Refresh").clicked() {
-                        self.refresh_special(action.get_name());
+                        self.refresh_special(&action.get_name());
                         if let Some(save) = &mut self.current_save {
                             save.refresh_special(action.get_name());
                         }
@@ -643,8 +643,8 @@ impl GuiGreedApp {
         }
     }
 
-    fn refresh_special(&mut self, special_name: String) {
-        self.game_state.refresh_special(special_name.as_str());
+    fn refresh_special(&mut self, special_name: &str) {
+        self.game_state.refresh_special(special_name);
     }
 }
 
