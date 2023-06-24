@@ -8,7 +8,7 @@ use eframe::egui;
 use eframe::glow::Context;
 use eframe::Storage;
 use egui_file::FileDialog;
-use log::info;
+use log::{error, info};
 use tokio::join;
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
@@ -74,27 +74,34 @@ pub struct GuiGreedApp {
 impl GuiGreedApp {
     pub fn new(cc: &eframe::CreationContext, class_cache: ClassCache) -> GuiGreedApp {
         info!("Starting up app!");
-        let app_state = if let Some(storage) = cc.storage {
+        let mut app_state = if let Some(storage) = cc.storage {
             eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
         } else {
             AppState::new()
         };
+
+        let mut game_state = GameState::default();
+
         let save = app_state
             .get_current_campaign_path()
             .map(Save::from_file)
-            .unwrap()
-            .unwrap();
+            .and_then(|result| {
+                result
+                    .map_err(|err| {
+                        error!("{}", err);
+                        app_state.clear_current_campaign_path();
+                    })
+                    .ok()
+            })
+            .unwrap_or_default();
 
         let character = save.get_character();
 
         let (utilities, passives, primary_actions, secondary_actions, special_actions) =
             character.get_all_actions(&class_cache);
-
-        let mut game_state = GameState::default();
         for action in special_actions {
             game_state.push_special(action);
         }
-
         let character_origin = character.get_origin().and_then(|origin_name| {
             class_cache
                 .get_origins()

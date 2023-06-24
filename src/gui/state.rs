@@ -35,6 +35,10 @@ impl AppState {
     pub fn set_current_campaign_path<P: Into<String>>(&mut self, path: P) {
         self.current_campaign_path = Some(path.into());
     }
+
+    pub fn clear_current_campaign_path(&mut self) {
+        self.current_campaign_path = None;
+    }
 }
 
 #[cfg(test)]
