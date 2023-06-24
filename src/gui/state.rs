@@ -31,6 +31,10 @@ impl AppState {
     pub fn get_current_campaign_path(&self) -> Option<String> {
         self.current_campaign_path.clone()
     }
+
+    pub fn set_current_campaign_path<P: Into<String>>(&mut self, path: P) {
+        self.current_campaign_path = Some(path.into());
+    }
 }
 
 #[cfg(test)]
