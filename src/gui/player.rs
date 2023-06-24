@@ -82,7 +82,13 @@ impl GuiGreedApp {
 
         let mut game_state = GameState::default();
 
-        let save = app_state
+        let rule_refresh_runtime = tokio::runtime::Builder::new_multi_thread()
+            .thread_name("rules-refresh-worker")
+            .enable_all()
+            .build()
+            .unwrap();
+
+        if let Some(save) = app_state
             .get_current_campaign_path()
             .map(Save::from_file)
             .and_then(|result| {
@@ -93,58 +99,71 @@ impl GuiGreedApp {
                     })
                     .ok()
             })
-            .unwrap_or_default();
+        {
+            let character = save.get_character();
 
-        let character = save.get_character();
-
-        let (utilities, passives, primary_actions, secondary_actions, special_actions) =
-            character.get_all_actions(&class_cache);
-        for action in special_actions {
-            game_state.push_special(action);
-        }
-        let character_origin = character.get_origin().and_then(|origin_name| {
-            class_cache
-                .get_origins()
-                .iter()
-                .find(|origin| origin.get_name() == origin_name.clone())
-                .map(std::clone::Clone::clone)
-        });
-
-        let character_classes = character
-            .get_classes()
-            .iter()
-            .filter_map(|class_name| {
+            let (utilities, passives, primary_actions, secondary_actions, special_actions) =
+                character.get_all_actions(&class_cache);
+            for action in special_actions {
+                game_state.push_special(action);
+            }
+            let character_origin = character.get_origin().and_then(|origin_name| {
                 class_cache
-                    .get_classes()
+                    .get_origins()
                     .iter()
-                    .find(|class| class.get_name() == class_name.clone())
+                    .find(|origin| origin.get_name() == origin_name.clone())
                     .map(std::clone::Clone::clone)
-            })
-            .collect();
+            });
 
-        let rule_refresh_runtime = tokio::runtime::Builder::new_multi_thread()
-            .thread_name("rules-refresh-worker")
-            .enable_all()
-            .build()
-            .unwrap();
+            let character_classes = character
+                .get_classes()
+                .iter()
+                .filter_map(|class_name| {
+                    class_cache
+                        .get_classes()
+                        .iter()
+                        .find(|class| class.get_name() == class_name.clone())
+                        .map(std::clone::Clone::clone)
+                })
+                .collect();
 
-        GuiGreedApp {
-            game_state,
-            app_state,
-            new_campaign_name_entry: String::new(),
-            current_save: Some(save),
-            open_file_dialog: None,
-            save_file_dialog: None,
-            utilities,
-            show_utilities: true,
-            passives,
-            primary_actions,
-            secondary_actions,
-            class_cache,
-            character_origin,
-            character_classes,
-            rule_refresh_runtime,
-            rule_refresh_handle: RefCell::new(None),
+            GuiGreedApp {
+                game_state,
+                app_state,
+                new_campaign_name_entry: String::new(),
+                current_save: Some(save),
+                open_file_dialog: None,
+                save_file_dialog: None,
+                utilities,
+                show_utilities: true,
+                passives,
+                primary_actions,
+                secondary_actions,
+                class_cache,
+                character_origin,
+                character_classes,
+                rule_refresh_runtime,
+                rule_refresh_handle: RefCell::new(None),
+            }
+        } else {
+            GuiGreedApp {
+                game_state,
+                app_state,
+                new_campaign_name_entry: String::new(),
+                current_save: None,
+                open_file_dialog: None,
+                save_file_dialog: None,
+                utilities: vec![],
+                show_utilities: true,
+                passives: vec![],
+                primary_actions: vec![],
+                secondary_actions: vec![],
+                class_cache,
+                character_origin: None,
+                character_classes: vec![],
+                rule_refresh_runtime,
+                rule_refresh_handle: RefCell::new(None),
+            }
         }
     }
 
@@ -250,26 +269,28 @@ impl GuiGreedApp {
                         self.view_menu(ui);
                     });
 
-                    ui.menu_button("Actions", |ui| {
-                        if ui.button("Refresh Secondary Action").clicked() {
-                            self.game_state.extra_secondary();
-                        }
+                    if self.current_save.is_some() {
+                        ui.menu_button("Actions", |ui| {
+                            if ui.button("Refresh Secondary Action").clicked() {
+                                self.game_state.extra_secondary();
+                            }
 
-                        if self
-                            .game_state
-                            .get_special_actions()
-                            .iter()
-                            .any(SpecialAction::is_usable)
-                            && ui.button("Exhaust All Specials").clicked()
-                        {
-                            self.game_state.exhaust_specials();
-                        }
-                    });
+                            if self
+                                .game_state
+                                .get_special_actions()
+                                .iter()
+                                .any(SpecialAction::is_usable)
+                                && ui.button("Exhaust All Specials").clicked()
+                            {
+                                self.game_state.exhaust_specials();
+                            }
+                        });
 
-                    ui.menu_button("Classes", |ui| self.classes_menu(ui));
-                    self.next_part_buttons(ui);
+                        ui.menu_button("Classes", |ui| self.classes_menu(ui));
+                        self.next_part_buttons(ui);
 
-                    ui.menu_button("Stats", |ui| self.stats_panel(ui));
+                        ui.menu_button("Stats", |ui| self.stats_panel(ui));
+                    }
 
                     self.refresh_rules(ui, frame);
 
@@ -301,19 +322,21 @@ impl GuiGreedApp {
             self.save_file_dialog = Some(dialog);
         }
 
-        ui.menu_button("Origin", |ui| {
-            let old_origin = self.character_origin.clone();
-            for origin in &self.class_cache.get_origins() {
-                ui.radio_value(
-                    &mut self.character_origin,
-                    Some(origin.clone()),
-                    origin.get_name(),
-                );
-            }
-            if self.character_origin != old_origin {
-                self.change_origin(old_origin, self.character_origin.clone());
-            }
-        });
+        if self.current_save.is_some() {
+            ui.menu_button("Origin", |ui| {
+                let old_origin = self.character_origin.clone();
+                for origin in &self.class_cache.get_origins() {
+                    ui.radio_value(
+                        &mut self.character_origin,
+                        Some(origin.clone()),
+                        origin.get_name(),
+                    );
+                }
+                if self.character_origin != old_origin {
+                    self.change_origin(self.character_origin.clone());
+                }
+            });
+        }
     }
 
     fn view_menu(&mut self, ui: &mut egui::Ui) {
@@ -590,7 +613,7 @@ impl GuiGreedApp {
         self.character_classes.push(class);
     }
 
-    fn change_origin(&mut self, old_origin: Option<Class>, new_origin: Option<Class>) {
+    fn change_origin(&mut self, new_origin: Option<Class>) {
         if let Some(campaign) = self.current_save.as_mut().map(Save::get_character_mut) {
             campaign.replace_origin(new_origin.map(|class| class.get_name()));
             self.refresh_campaign();

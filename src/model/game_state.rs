@@ -167,10 +167,6 @@ impl GameState {
         self.special_actions.push(special_action);
     }
 
-    pub fn insert_special(&mut self, index: usize, special_action: SpecialAction) {
-        self.special_actions.insert(index, special_action);
-    }
-
     /**
      * Get the current battle's turn number
      */
