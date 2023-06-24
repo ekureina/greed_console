@@ -592,6 +592,20 @@ impl GuiGreedApp {
 
     fn change_origin(&mut self, old_origin: Option<Class>, new_origin: Option<Class>) {
         if let Some(origin) = old_origin {
+            if let Some(utility_index) = self
+                .utilities
+                .iter()
+                .position(|action| action.clone() == origin.get_utility())
+            {
+                self.utilities.remove(utility_index);
+            }
+            if let Some(passive_index) = self
+                .passives
+                .iter()
+                .position(|action| action.clone() == origin.get_passive())
+            {
+                self.passives.remove(passive_index);
+            }
             if let Some(primary_index) = self
                 .primary_actions
                 .iter()
@@ -617,6 +631,8 @@ impl GuiGreedApp {
         }
         if let Some(new_origin) = new_origin.clone() {
             if new_origin.get_name() != "Human" {
+                self.utilities.insert(0, new_origin.get_utility());
+                self.passives.insert(0, new_origin.get_passive());
                 self.primary_actions
                     .insert(0, new_origin.get_primary_action());
                 self.secondary_actions
