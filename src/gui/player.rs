@@ -57,6 +57,7 @@ pub struct GuiGreedApp {
     app_state: AppState,
     current_save: Option<Save>,
     open_file_dialog: Option<FileDialog>,
+    save_file_dialog: Option<FileDialog>,
     utilities: Vec<ClassUtility>,
     show_utilities: bool,
     passives: Vec<ClassPassive>,
@@ -127,6 +128,7 @@ impl GuiGreedApp {
             app_state,
             current_save: Some(save),
             open_file_dialog: None,
+            save_file_dialog: None,
             utilities,
             show_utilities: true,
             passives,
@@ -210,7 +212,7 @@ impl GuiGreedApp {
                     });
 
                     ui.menu_button("Campaign", |ui| {
-                        self.campaign_menu(ctx, ui);
+                        self.campaign_menu(ui);
                     });
 
                     if let Some(dialog) = &mut self.open_file_dialog {
@@ -219,6 +221,19 @@ impl GuiGreedApp {
                                 let picked_file = file.to_str().map_or_else(String::new, String::from);
                                 self.current_save = Some(self.rule_refresh_runtime.block_on(async move { Save::from_file(&file).await.unwrap() }));
                                 self.app_state.set_current_campaign_path(picked_file);
+                            }
+                        }
+                    }
+
+                    if let Some(dialog) = &mut self.save_file_dialog {
+                        if dialog.show(ctx).selected() {
+                            if let Some(file) = dialog.path() {
+                                if let Some(save) = self.current_save.clone() {
+                                    if let Some(path) = file.to_str() {
+                                        self.app_state.set_current_campaign_path(path);
+                                    }
+                                    self.rule_refresh_runtime.block_on(async move { save.to_file(file).await.unwrap() });
+                                }
                             }
                         }
                     }
@@ -255,12 +270,19 @@ impl GuiGreedApp {
             });
     }
 
-    fn campaign_menu(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    fn campaign_menu(&mut self, ui: &mut egui::Ui) {
         ui.set_min_width(200.0);
-        if (ui.button("Open")).clicked() {
+        if ui.button("Open").clicked() {
             let mut dialog = FileDialog::open_file(None);
             dialog.open();
             self.open_file_dialog = Some(dialog);
+        }
+
+        if ui.button("Save").clicked() {
+            let start_path = self.app_state.get_current_campaign_path().map(Into::into);
+            let mut dialog = FileDialog::save_file(start_path);
+            dialog.open();
+            self.save_file_dialog = Some(dialog);
         }
 
         ui.menu_button("Origin", |ui| {
