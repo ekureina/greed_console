@@ -79,14 +79,11 @@ impl GuiGreedApp {
         } else {
             AppState::new()
         };
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
         let save = app_state
             .get_current_campaign_path()
-            .map(|path| rt.block_on(async move { Save::from_file(path).await.unwrap() }))
-            .unwrap_or_default();
+            .map(Save::from_file)
+            .unwrap()
+            .unwrap();
 
         let character = save.get_character();
 
@@ -221,7 +218,7 @@ impl GuiGreedApp {
                         if dialog.show(ctx).selected() {
                             if let Some(file) = dialog.path() {
                                 let picked_file = file.to_str().map_or_else(String::new, String::from);
-                                self.current_save = Some(self.rule_refresh_runtime.block_on(async move { Save::from_file(&file).await.unwrap() }));
+                                self.current_save = Some(Save::from_file(&file).unwrap());
                                 self.app_state.set_current_campaign_path(picked_file);
                                 self.refresh_campaign();
                             }
@@ -235,7 +232,8 @@ impl GuiGreedApp {
                                     if let Some(path) = file.to_str() {
                                         self.app_state.set_current_campaign_path(path);
                                     }
-                                    self.rule_refresh_runtime.block_on(async move { save.to_file(file).await.unwrap() });
+
+                                    save.to_file(file).unwrap();
                                 }
                             }
                         }

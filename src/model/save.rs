@@ -1,11 +1,11 @@
 use ron::{from_str, to_string};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::fs::File;
+use std::io::{Read, Write};
 use std::num::Wrapping;
 use std::path::Path;
 use thiserror::Error;
-use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use super::sheets::Character;
 
@@ -42,16 +42,17 @@ impl Save {
         }
     }
 
-    pub async fn from_file(path: impl AsRef<Path>) -> Result<Save, SaveFromFileError> {
-        let mut file = File::open(path).await?;
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Save, SaveFromFileError> {
+        let mut file = File::open(path)?;
         let mut contents = String::new();
-        file.read_to_string(&mut contents).await?;
+        file.read_to_string(&mut contents)?;
         Ok(from_str(&contents)?)
     }
 
-    pub async fn to_file(&self, path: impl AsRef<Path>) -> Result<(), SaveToFileError> {
-        let mut file = File::create(path).await?;
-        file.write_all(to_string(&self)?.as_bytes()).await?;
+    pub fn to_file(&self, path: impl AsRef<Path>) -> Result<(), SaveToFileError> {
+        let mut file = File::create(path)?;
+        file.write_all(to_string(&self)?.as_bytes())?;
+        file.flush()?;
         Ok(())
     }
 
