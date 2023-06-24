@@ -1,5 +1,6 @@
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 /*
@@ -132,12 +133,18 @@ impl Class {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ClassCache {
     origins: Vec<Class>,
-    classes: Vec<Class>,
+    classes: IndexMap<String, Class>,
 }
 
 impl ClassCache {
     pub fn new(origins: Vec<Class>, classes: Vec<Class>) -> ClassCache {
-        ClassCache { origins, classes }
+        ClassCache {
+            origins,
+            classes: classes
+                .into_iter()
+                .map(|class| (class.get_name(), class))
+                .collect(),
+        }
     }
 
     pub fn get_origins(&self) -> Vec<Class> {
@@ -145,6 +152,6 @@ impl ClassCache {
     }
 
     pub fn get_classes(&self) -> Vec<Class> {
-        self.classes.clone()
+        self.classes.values().cloned().collect()
     }
 }
