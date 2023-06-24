@@ -47,17 +47,7 @@ impl Character {
                 .find(|origin| origin.get_name() == origin_name.clone())
                 .cloned()
         });
-        let character_classes = self
-            .get_classes()
-            .iter()
-            .filter_map(|class_name| {
-                class_cache
-                    .get_classes()
-                    .iter()
-                    .find(|class| class.get_name() == class_name.clone())
-                    .cloned()
-            })
-            .collect::<Vec<Class>>();
+        let character_classes = class_cache.map_to_concrete_classes(self.get_classes());
 
         let utilities = character_origin
             .clone()
@@ -140,8 +130,8 @@ impl Character {
         self.origin = new_origin;
     }
 
-    pub fn get_classes(&self) -> Vec<String> {
-        self.classes.clone()
+    pub fn get_classes(&self) -> &Vec<String> {
+        &self.classes
     }
 
     pub fn add_class<N: Into<String>>(&mut self, class_name: N) {

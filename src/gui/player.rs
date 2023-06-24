@@ -123,17 +123,7 @@ impl GuiGreedApp {
                     .map(std::clone::Clone::clone)
             });
 
-            let character_classes = character
-                .get_classes()
-                .iter()
-                .filter_map(|class_name| {
-                    class_cache
-                        .get_classes()
-                        .iter()
-                        .find(|class| class.get_name() == class_name.clone())
-                        .map(std::clone::Clone::clone)
-                })
-                .collect();
+            let character_classes = class_cache.map_to_concrete_classes(character.get_classes());
 
             GuiGreedApp {
                 game_state,
@@ -414,7 +404,7 @@ impl GuiGreedApp {
     }
 
     fn classes_menu(&mut self, ui: &mut egui::Ui) {
-        if self.character_classes.len() != self.class_cache.get_classes().len() {
+        if self.character_classes.len() != self.class_cache.get_class_cache_count() {
             ui.menu_button("Add", |ui| {
                 let mut classes_to_add = vec![];
                 let current_class_names = self
@@ -424,7 +414,7 @@ impl GuiGreedApp {
                     .collect::<Vec<String>>();
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    for class in &self.class_cache.get_classes() {
+                    for class in self.class_cache.get_classes() {
                         if !self.character_classes.contains(class)
                             && class.get_class_available(&current_class_names)
                             && ui.button(class.get_name()).clicked()

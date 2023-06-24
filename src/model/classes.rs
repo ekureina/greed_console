@@ -151,7 +151,19 @@ impl ClassCache {
         self.origins.clone()
     }
 
-    pub fn get_classes(&self) -> Vec<Class> {
-        self.classes.values().cloned().collect()
+    pub fn get_classes(&self) -> Vec<&Class> {
+        self.classes.values().collect()
+    }
+
+    pub fn get_class_cache_count(&self) -> usize {
+        self.classes.len()
+    }
+
+    pub fn map_to_concrete_classes(&self, class_names: &[String]) -> Vec<Class> {
+        class_names
+            .iter()
+            .filter_map(|class_name| self.classes.get(class_name))
+            .cloned()
+            .collect()
     }
 }
