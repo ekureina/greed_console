@@ -55,6 +55,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pub struct GuiGreedApp {
     game_state: GameState,
     app_state: AppState,
+    new_campaign_name_entry: String,
     current_save: Option<Save>,
     open_file_dialog: Option<FileDialog>,
     save_file_dialog: Option<FileDialog>,
@@ -126,6 +127,7 @@ impl GuiGreedApp {
         GuiGreedApp {
             game_state,
             app_state,
+            new_campaign_name_entry: String::new(),
             current_save: Some(save),
             open_file_dialog: None,
             save_file_dialog: None,
@@ -273,6 +275,14 @@ impl GuiGreedApp {
 
     fn campaign_menu(&mut self, ui: &mut egui::Ui) {
         ui.set_min_width(200.0);
+        ui.menu_button("New", |ui| {
+            ui.text_edit_singleline(&mut self.new_campaign_name_entry);
+            if ui.button("Create").clicked() {
+                self.current_save = Some(Save::new(&self.new_campaign_name_entry));
+                self.new_campaign_name_entry.clear();
+                self.refresh_campaign();
+            }
+        });
         if ui.button("Open").clicked() {
             let mut dialog = FileDialog::open_file(None);
             dialog.open();
