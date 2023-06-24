@@ -69,6 +69,8 @@ pub struct GuiGreedApp {
     character_classes: Vec<Class>,
     rule_refresh_runtime: Runtime,
     rule_refresh_handle: RefCell<Option<JoinHandle<ClassCache>>>,
+    show_save_on_quit_dialog: bool,
+    allowed_to_quit: bool,
 }
 
 impl GuiGreedApp {
@@ -150,6 +152,8 @@ impl GuiGreedApp {
                 character_classes,
                 rule_refresh_runtime,
                 rule_refresh_handle: RefCell::new(None),
+                show_save_on_quit_dialog: false,
+                allowed_to_quit: false,
             }
         } else {
             GuiGreedApp {
@@ -169,6 +173,8 @@ impl GuiGreedApp {
                 character_classes: vec![],
                 rule_refresh_runtime,
                 rule_refresh_handle: RefCell::new(None),
+                show_save_on_quit_dialog: false,
+                allowed_to_quit: false,
             }
         }
     }
@@ -713,6 +719,34 @@ impl eframe::App for GuiGreedApp {
         self.menu_panel(ctx, frame);
 
         self.main_panel(ctx);
+
+        if self.show_save_on_quit_dialog {
+            egui::Window::new("Save Campaign?")
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        if ui.button("Cancel").clicked() {
+                            self.show_save_on_quit_dialog = false;
+                        }
+
+                        if ui.button("Save").clicked() {
+                            self.allowed_to_quit = true;
+                            if let Some(path) = self.app_state.get_current_campaign_path() {
+                                if let Some(save) = &self.current_save {
+                                    save.to_file(path).unwrap();
+                                    frame.close();
+                                }
+                            }
+                        }
+
+                        if ui.button("Quit").clicked() {
+                            self.allowed_to_quit = true;
+                            frame.close();
+                        }
+                    });
+                });
+        }
     }
 
     fn save(&mut self, storage: &mut dyn Storage) {
@@ -725,6 +759,21 @@ impl eframe::App for GuiGreedApp {
 
     fn auto_save_interval(&self) -> Duration {
         Duration::from_secs(60)
+    }
+
+    fn on_close_event(&mut self) -> bool {
+        if let Some(path) = self.app_state.get_current_campaign_path() {
+            if let Some(save) = &self.current_save {
+                if let Ok(old_save) = Save::from_file(path) {
+                    if old_save != save.clone() {
+                        self.show_save_on_quit_dialog = true;
+                        return self.allowed_to_quit;
+                    }
+                }
+            }
+        }
+
+        true
     }
 
     fn on_exit(&mut self, _gl: Option<&Context>) {
