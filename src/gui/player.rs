@@ -407,8 +407,8 @@ impl GuiGreedApp {
                     "class_cache",
                     &self.class_cache,
                 );
-                // TODO: Update campaign view
                 info!("Campaign updated to new rules.");
+                self.refresh_campaign();
             }
         }
     }
