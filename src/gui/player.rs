@@ -413,15 +413,17 @@ impl GuiGreedApp {
                 }
             });
         }
-        ui.menu_button("Remove", |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                for class in self.character_classes.clone() {
-                    if ui.button(class.get_name()).clicked() {
-                        self.remove_class(&class);
+        if !self.character_classes.is_empty() {
+            ui.menu_button("Remove", |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for class in self.character_classes.clone() {
+                        if ui.button(class.get_name()).clicked() {
+                            self.remove_class(&class);
+                        }
                     }
-                }
+                });
             });
-        });
+        }
     }
 
     fn refresh_campaign(&mut self) {
