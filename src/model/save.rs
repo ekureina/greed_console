@@ -44,4 +44,16 @@ impl Save {
         file.write_all(to_string(&self)?.as_bytes()).await?;
         Ok(())
     }
+
+    pub fn get_character(&self) -> Character {
+        self.character.clone()
+    }
+
+    pub fn get_character_mut(&mut self) -> &mut Character {
+        &mut self.character
+    }
+
+    pub fn get_campaign_name(&self) -> String {
+        self.campaign_name.clone()
+    }
 }

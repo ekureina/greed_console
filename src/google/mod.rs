@@ -61,7 +61,7 @@ async fn get_document() -> google_docs1::api::Document {
         .1
 }
 
-#[allow(clippy::let_underscore_drop)]
+#[allow(let_underscore_drop)]
 fn get_class(first_line: &str, mut paragraphs: impl Iterator<Item = String>) -> Class {
     let class_name = first_line.split('(').collect::<Vec<&str>>()[0]
         .trim()
@@ -125,7 +125,7 @@ fn get_class(first_line: &str, mut paragraphs: impl Iterator<Item = String>) -> 
     )
 }
 
-#[allow(clippy::let_underscore_drop)]
+#[allow(let_underscore_drop)]
 fn get_origin(first_line: &str, mut paragraphs: impl Iterator<Item = String>) -> Class {
     let origin_name = first_line.split_whitespace().collect::<Vec<&str>>()[0].to_string();
     if origin_name == "Human" {

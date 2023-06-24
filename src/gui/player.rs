@@ -2,6 +2,7 @@ use super::state::AppState;
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 use crate::model::classes::{Class, ClassCache, ClassPassive, ClassUtility};
 use crate::model::game_state::GameState;
+use crate::model::save::Save;
 
 use eframe::egui;
 use eframe::glow::Context;
@@ -53,7 +54,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pub struct GuiGreedApp {
     game_state: GameState,
     app_state: AppState,
-    new_campaign_text: String,
+    current_save: Option<Save>,
     utilities: Vec<ClassUtility>,
     show_utilities: bool,
     passives: Vec<ClassPassive>,
@@ -74,10 +75,16 @@ impl GuiGreedApp {
         } else {
             AppState::new()
         };
-        let character = app_state
-            .get_current_campaign()
-            .map(Clone::clone)
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let save = app_state
+            .get_current_campaign_path()
+            .map(|path| rt.block_on(async move { Save::from_file(path).await.unwrap() }))
             .unwrap_or_default();
+
+        let character = save.get_character();
 
         let (utilities, passives, primary_actions, secondary_actions, special_actions) =
             character.get_all_actions(&class_cache);
@@ -116,7 +123,7 @@ impl GuiGreedApp {
         GuiGreedApp {
             game_state,
             app_state,
-            new_campaign_text: String::default(),
+            current_save: Some(save),
             utilities,
             show_utilities: true,
             passives,
@@ -133,9 +140,9 @@ impl GuiGreedApp {
     fn stats_panel(&mut self, ui: &mut egui::Ui) {
         ui.label(format!(
             "Campaign: {}",
-            self.app_state
-                .get_current_campaign_name()
-                .unwrap_or_else(|| String::from("None"))
+            self.current_save
+                .as_ref()
+                .map_or_else(|| String::from("None"), Save::get_campaign_name)
         ));
         ui.label(format!("Round Number: {}", self.game_state.get_round_num()));
         ui.label(format!("Turn: {}", self.game_state.get_turn_side()));
@@ -237,55 +244,6 @@ impl GuiGreedApp {
 
     fn campaign_menu(&mut self, ui: &mut egui::Ui) {
         ui.set_min_width(200.0);
-        ui.menu_button("New", |ui| {
-            if (ui
-                .text_edit_singleline(&mut self.new_campaign_text)
-                .lost_focus()
-                || ui.button("Create").clicked())
-                && !self.new_campaign_text.is_empty()
-            {
-                info!("New Campaign: {}", self.new_campaign_text);
-                if !self
-                    .app_state
-                    .get_campaign_exists(self.new_campaign_text.clone())
-                {
-                    self.app_state
-                        .create_campaign(self.new_campaign_text.clone());
-                    self.switch_campaign(self.new_campaign_text.clone());
-                }
-                self.new_campaign_text.clear();
-                ui.close_menu();
-            }
-        });
-        if self.app_state.get_campaign_names().iter().any(|name| {
-            *name.clone()
-                != self
-                    .app_state
-                    .get_current_campaign_name()
-                    .unwrap_or_else(|| "None".to_owned())
-        }) {
-            ui.menu_button("Switch", |ui| {
-                for campaign in self.app_state.get_campaign_names() {
-                    if self.app_state.get_current_campaign_name().is_some()
-                        && self.app_state.get_current_campaign_name().unwrap() != campaign
-                        && ui.button(campaign.clone()).clicked()
-                    {
-                        self.switch_campaign(campaign);
-                        ui.close_menu();
-                    }
-                }
-            });
-        }
-        if !self.app_state.get_campaign_names().is_empty() {
-            ui.menu_button("Remove", |ui| {
-                for campaign in self.app_state.get_campaign_names() {
-                    if ui.button(campaign.clone()).clicked() {
-                        self.app_state.remove_campaign(campaign);
-                        ui.close_menu();
-                    }
-                }
-            });
-        }
         ui.menu_button("Origin", |ui| {
             let old_origin = self.character_origin.clone();
             for origin in &self.class_cache.get_origins() {
@@ -344,9 +302,7 @@ impl GuiGreedApp {
                     "class_cache",
                     &self.class_cache,
                 );
-                if let Some(campaign_name) = self.app_state.get_current_campaign_name() {
-                    self.switch_campaign(campaign_name);
-                }
+                // TODO: Update campaign view
                 info!("Campaign updated to new rules.");
             }
         }
@@ -386,31 +342,6 @@ impl GuiGreedApp {
                 }
             });
         });
-    }
-
-    fn switch_campaign(&mut self, new_campaign_name: String) {
-        self.app_state.set_current_campaign(new_campaign_name);
-        let current_campaign = self.app_state.get_current_campaign().unwrap();
-        let (utility, passive, primary, secondary, special) =
-            current_campaign.get_all_actions(&self.class_cache);
-        self.primary_actions = primary;
-        self.secondary_actions = secondary;
-        self.utilities = utility;
-        self.passives = passive;
-        self.game_state = GameState::default();
-        let new_origin = current_campaign.get_origin().and_then(|origin_name| {
-            self.class_cache
-                .get_origins()
-                .iter()
-                .find(|origin| origin.get_name() == origin_name)
-                .map(std::clone::Clone::clone)
-        });
-        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
-            campaign.replace_origin(new_origin.map(|class| class.get_name()));
-        }
-        for action in special {
-            self.game_state.push_special(action);
-        }
     }
 
     fn main_panel(&mut self, ctx: &egui::Context) {
@@ -571,7 +502,8 @@ impl GuiGreedApp {
         self.primary_actions.push(class.get_primary_action());
         self.secondary_actions.push(class.get_secondary_action());
         self.game_state.push_special(class.get_special_action());
-        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+
+        if let Some(campaign) = self.current_save.as_mut().map(Save::get_character_mut) {
             campaign.add_class(class.get_name());
         }
         self.character_classes.push(class);
@@ -612,7 +544,7 @@ impl GuiGreedApp {
                     .insert_special(0, new_origin.get_special_action());
             }
         }
-        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+        if let Some(campaign) = self.current_save.as_mut().map(Save::get_character_mut) {
             campaign.replace_origin(new_origin.map(|class| class.get_name()));
         }
     }
@@ -661,7 +593,7 @@ impl GuiGreedApp {
         {
             self.character_classes.remove(class_index);
         }
-        if let Some(campaign) = self.app_state.get_current_campaign_mut() {
+        if let Some(campaign) = self.current_save.as_mut().map(Save::get_character_mut) {
             campaign.remove_class(class.get_name());
         }
     }
