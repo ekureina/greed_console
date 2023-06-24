@@ -40,13 +40,10 @@ impl Character {
         Vec<SecondaryAction>,
         Vec<SpecialAction>,
     ) {
-        let character_origin = self.get_origin().and_then(|origin_name| {
-            class_cache
-                .get_origins()
-                .iter()
-                .find(|origin| origin.get_name() == origin_name.clone())
-                .cloned()
-        });
+        let character_origin = self
+            .get_origin()
+            .and_then(|origin_name| class_cache.get_origin(origin_name.as_str()));
+
         let character_classes = class_cache.map_to_concrete_classes(self.get_classes());
 
         let utilities = character_origin

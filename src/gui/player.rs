@@ -115,13 +115,10 @@ impl GuiGreedApp {
                 }
                 game_state.push_special(action.clone());
             }
-            let character_origin = character.get_origin().and_then(|origin_name| {
-                class_cache
-                    .get_origins()
-                    .iter()
-                    .find(|origin| origin.get_name() == origin_name.clone())
-                    .map(std::clone::Clone::clone)
-            });
+            let character_origin = character
+                .get_origin()
+                .and_then(|origin_name| class_cache.get_origin(origin_name.as_str()))
+                .cloned();
 
             let character_classes = class_cache.map_to_concrete_classes(character.get_classes());
 
@@ -333,7 +330,7 @@ impl GuiGreedApp {
         if self.current_save.is_some() {
             ui.menu_button("Origin", |ui| {
                 let old_origin = self.character_origin.clone();
-                for origin in &self.class_cache.get_origins() {
+                for origin in self.class_cache.get_origins() {
                     ui.radio_value(
                         &mut self.character_origin,
                         Some(origin.clone()),
@@ -458,13 +455,11 @@ impl GuiGreedApp {
                 }
                 self.game_state.push_special(action.clone());
             }
-            let new_origin = current_campaign.get_origin().and_then(|origin_name| {
-                self.class_cache
-                    .get_origins()
-                    .iter()
-                    .find(|origin| origin.get_name() == origin_name)
-                    .map(std::clone::Clone::clone)
-            });
+            let new_origin = current_campaign
+                .get_origin()
+                .and_then(|origin_name| self.class_cache.get_origin(origin_name.as_str()))
+                .cloned();
+
             self.character_origin = new_origin;
             self.game_state.set_round(save.get_round());
         }
@@ -608,7 +603,7 @@ impl GuiGreedApp {
                         .on_disabled_hover_text(action.get_description())
                         .clicked()
                     {
-                        self.game_state.use_special(action.get_name());
+                        self.game_state.use_special(action.get_name().as_str());
                         if let Some(save) = &mut self.current_save {
                             save.use_special(action.get_name());
                         }
@@ -698,7 +693,7 @@ impl GuiGreedApp {
     }
 
     fn refresh_special(&mut self, special_name: String) {
-        self.game_state.refresh_special(special_name);
+        self.game_state.refresh_special(special_name.as_str());
     }
 }
 

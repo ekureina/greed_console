@@ -95,7 +95,7 @@ impl SpecialAction {
         }
     }
 
-    pub fn is_named<S: Into<String>>(&self, name: S) -> bool {
+    pub fn is_named<'a, S: Into<&'a str>>(&self, name: S) -> bool {
         self.name == name.into()
     }
 

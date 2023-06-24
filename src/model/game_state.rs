@@ -115,11 +115,12 @@ impl GameState {
     /**
      * Set GameState such that a special action was used
      */
-    pub fn use_special<S: Into<String> + Clone>(&mut self, name: S) {
+    pub fn use_special<'a, S: Into<&'a str>>(&mut self, name: S) {
+        let name_ref = name.into();
         for action in &mut self.special_actions.iter_mut() {
-            if action.is_named(name.clone()) {
+            if action.is_named(name_ref) {
                 action.use_action();
-                info!("Used action {}", name.into());
+                info!("Used action {}", name_ref);
                 break;
             }
         }
@@ -129,11 +130,12 @@ impl GameState {
     /**
      * Refresh a specific Special Move
      */
-    pub fn refresh_special<S: Into<String> + Clone>(&mut self, name: S) {
+    pub fn refresh_special<'a, S: Into<&'a str>>(&mut self, name: S) {
+        let name_ref = name.into();
         for action in &mut self.special_actions.iter_mut() {
-            if action.is_named(name.clone()) {
+            if action.is_named(name_ref) {
                 action.refresh();
-                info!("Refreshed Action {}", name.into());
+                info!("Refreshed Action {}", name_ref);
                 break;
             }
         }

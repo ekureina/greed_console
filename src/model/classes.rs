@@ -132,14 +132,17 @@ impl Class {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ClassCache {
-    origins: Vec<Class>,
+    origins: IndexMap<String, Class>,
     classes: IndexMap<String, Class>,
 }
 
 impl ClassCache {
     pub fn new(origins: Vec<Class>, classes: Vec<Class>) -> ClassCache {
         ClassCache {
-            origins,
+            origins: origins
+                .into_iter()
+                .map(|origin| (origin.get_name(), origin))
+                .collect(),
             classes: classes
                 .into_iter()
                 .map(|class| (class.get_name(), class))
@@ -147,8 +150,12 @@ impl ClassCache {
         }
     }
 
-    pub fn get_origins(&self) -> Vec<Class> {
-        self.origins.clone()
+    pub fn get_origins(&self) -> Vec<&Class> {
+        self.origins.values().collect()
+    }
+
+    pub fn get_origin<'a, N: Into<&'a str>>(&self, origin_name: N) -> Option<&Class> {
+        self.origins.get(origin_name.into())
     }
 
     pub fn get_classes(&self) -> Vec<&Class> {
