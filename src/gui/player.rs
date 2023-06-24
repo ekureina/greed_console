@@ -221,6 +221,7 @@ impl GuiGreedApp {
                                 let picked_file = file.to_str().map_or_else(String::new, String::from);
                                 self.current_save = Some(self.rule_refresh_runtime.block_on(async move { Save::from_file(&file).await.unwrap() }));
                                 self.app_state.set_current_campaign_path(picked_file);
+                                self.refresh_campaign();
                             }
                         }
                     }
@@ -383,6 +384,30 @@ impl GuiGreedApp {
                 }
             });
         });
+    }
+
+    fn refresh_campaign(&mut self) {
+        if let Some(save) = self.current_save.clone() {
+            let current_campaign = save.get_character();
+            let (utility, passive, primary, secondary, special) =
+                current_campaign.get_all_actions(&self.class_cache);
+            self.primary_actions = primary;
+            self.secondary_actions = secondary;
+            self.utilities = utility;
+            self.passives = passive;
+            self.game_state = GameState::default();
+            for action in special {
+                self.game_state.push_special(action);
+            }
+            let new_origin = current_campaign.get_origin().and_then(|origin_name| {
+                self.class_cache
+                    .get_origins()
+                    .iter()
+                    .find(|origin| origin.get_name() == origin_name)
+                    .map(std::clone::Clone::clone)
+            });
+            self.character_origin = new_origin;
+        }
     }
 
     fn main_panel(&mut self, ctx: &egui::Context) {
