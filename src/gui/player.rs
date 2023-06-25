@@ -195,6 +195,7 @@ impl GuiGreedApp {
                 if let Some(dialog) = &mut self.open_file_dialog {
                     if dialog.show(ctx).selected() {
                         if let Some(file) = dialog.path() {
+                            self.app_state.add_new_path_to_history(file.clone());
                             let new_save = Save::from_file(file.clone()).map_err(|err| {
                                 error_log_and_popup(&mut self.error_text, format!("Error loading save file: {err}"));
                             }).ok();
@@ -214,6 +215,7 @@ impl GuiGreedApp {
                                     Ok(()) => {
                                         info!("Successfully saved file to {:?}", file);
                                         *path = file.into_os_string();
+                                        self.app_state.add_new_path_to_history(path.clone());
                                     }
                                     Err(err) => {
                                         error_log_and_popup(&mut self.error_text, format!("Error while saving to file {file:?}: {err}"));
@@ -284,6 +286,34 @@ impl GuiGreedApp {
             let mut dialog = FileDialog::open_file(None);
             dialog.open();
             self.open_file_dialog = Some(dialog);
+        }
+
+        if !self.app_state.is_campaign_history_empty() {
+            ui.menu_button("Recent Campaigns", |ui| {
+                for (pos, path) in self
+                    .app_state
+                    .get_campaign_path_history()
+                    .clone()
+                    .into_iter()
+                    .enumerate()
+                {
+                    if ui.button(path.clone().to_string_lossy()).clicked() {
+                        if let Ok(new_save) = Save::from_file(path.clone()).map_err(|err| {
+                            error_log_and_popup(
+                                &mut self.error_text,
+                                format!(
+                                    "Failed to load recent campaign at '{}': {err}",
+                                    path.to_string_lossy()
+                                ),
+                            );
+                        }) {
+                            self.current_save = Some((path, new_save));
+                            self.refresh_campaign();
+                            self.app_state.use_path_more_recently(pos);
+                        }
+                    }
+                }
+            });
         }
 
         if self.current_save.is_some() && ui.button("Save").clicked() {

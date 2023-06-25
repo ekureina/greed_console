@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::ffi::OsString;
 
 use serde::{Deserialize, Serialize};
 
@@ -22,7 +23,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct AppState {
-    campaign_path_history: VecDeque<String>,
+    campaign_path_history: VecDeque<OsString>,
 }
 
 impl AppState {
@@ -30,11 +31,11 @@ impl AppState {
         AppState::default()
     }
 
-    pub fn get_campaign_path_history(&self) -> &VecDeque<String> {
+    pub fn get_campaign_path_history(&self) -> &VecDeque<OsString> {
         &self.campaign_path_history
     }
 
-    pub fn add_new_path_to_history<P: Into<String>>(&mut self, path: P) {
+    pub fn add_new_path_to_history<P: Into<OsString>>(&mut self, path: P) {
         self.campaign_path_history.push_front(path.into());
     }
 
@@ -42,6 +43,10 @@ impl AppState {
         if pos < self.campaign_path_history.len() {
             self.campaign_path_history.swap(pos, 0);
         }
+    }
+
+    pub fn is_campaign_history_empty(&self) -> bool {
+        self.campaign_path_history.is_empty()
     }
 }
 
