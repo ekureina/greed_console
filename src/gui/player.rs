@@ -196,13 +196,7 @@ impl GuiGreedApp {
                     if dialog.show(ctx).selected() {
                         if let Some(file) = dialog.path() {
                             self.app_state.add_new_path_to_history(file.clone());
-                            let new_save = Save::from_file(file.clone()).map_err(|err| {
-                                error_log_and_popup(&mut self.error_text, format!("Error loading save file: {err}"));
-                            }).ok();
-                            if new_save.is_some() {
-                                self.current_save = new_save.map(|save| (file.into_os_string(), save));
-                                self.refresh_campaign();
-                            }
+                            self.open_new_save(&file.as_os_str().to_owned());
                         }
                     }
                 }
@@ -296,19 +290,8 @@ impl GuiGreedApp {
                     .enumerate()
                 {
                     if ui.button(path.clone().to_string_lossy()).clicked() {
-                        if let Ok(new_save) = Save::from_file(path.clone()).map_err(|err| {
-                            error_log_and_popup(
-                                &mut self.error_text,
-                                format!(
-                                    "Failed to load recent campaign at '{}': {err}",
-                                    path.to_string_lossy()
-                                ),
-                            );
-                        }) {
-                            self.current_save = Some((path, new_save));
-                            self.refresh_campaign();
-                            self.app_state.use_path_more_recently(pos);
-                        }
+                        self.app_state.use_path_more_recently(pos);
+                        self.open_new_save(&path);
                     }
                 }
             });
@@ -755,6 +738,39 @@ impl GuiGreedApp {
         );
         dialog.open();
         self.open_file_dialog = Some(dialog);
+    }
+
+    fn open_new_save(&mut self, new_save_path: &OsString) {
+        let new_save = Save::from_file(new_save_path.clone()).map_err(|err| {
+            error_log_and_popup(
+                &mut self.error_text,
+                format!(
+                    "Error loading save file at '{}': {err}",
+                    new_save_path.to_string_lossy()
+                ),
+            );
+        });
+        if let Ok(new_save) = new_save {
+            let current_save_saved = if let Some((path, save)) = &mut self.current_save {
+                save.to_file(path.clone())
+                    .map_err(|err| {
+                        error_log_and_popup(
+                            &mut self.error_text,
+                            format!(
+                                "Unable to save current save to {}: {err}",
+                                path.to_string_lossy()
+                            ),
+                        );
+                    })
+                    .is_ok()
+            } else {
+                true
+            };
+            if current_save_saved {
+                self.current_save = Some((new_save_path.clone(), new_save));
+                self.refresh_campaign();
+            }
+        }
     }
 }
 
