@@ -282,6 +282,7 @@ impl GuiGreedApp {
 
         if !self.app_state.is_campaign_history_empty() {
             ui.menu_button("Recent Campaigns", |ui| {
+                let mut invalid_paths = vec![];
                 for (pos, path) in self
                     .app_state
                     .get_campaign_path_history()
@@ -289,10 +290,17 @@ impl GuiGreedApp {
                     .into_iter()
                     .enumerate()
                 {
-                    if ui.button(path.clone().to_string_lossy()).clicked() {
+                    if !Path::new(&path).is_file() {
+                        invalid_paths.push(pos);
+                    } else if ui.button(path.clone().to_string_lossy()).clicked() {
                         self.app_state.use_path_more_recently(pos);
                         self.open_new_save(&path);
                     }
+                }
+
+                // Offset because items will be removed
+                for (offset, pos) in invalid_paths.into_iter().enumerate() {
+                    self.app_state.remove_entry(pos - offset);
                 }
             });
         }

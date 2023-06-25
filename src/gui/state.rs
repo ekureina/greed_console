@@ -52,6 +52,12 @@ impl AppState {
     pub fn get_most_recent_campaign_path(&self) -> Option<&OsString> {
         self.campaign_path_history.front()
     }
+
+    pub fn remove_entry(&mut self, entry_pos: usize) {
+        if entry_pos < self.campaign_path_history.len() {
+            self.campaign_path_history.remove(entry_pos);
+        }
+    }
 }
 
 #[cfg(test)]
