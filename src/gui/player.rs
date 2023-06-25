@@ -1,6 +1,8 @@
 use super::state::AppState;
 use super::widgets::panels::StatsPanel;
+use super::widgets::popups::ErrorPopup;
 use crate::google::GetOriginsAndClassesError;
+use crate::gui::util::error_log_and_popup;
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 use crate::model::classes::{Class, ClassCache, ClassPassive, ClassUtility};
 use crate::model::game_state::GameState;
@@ -73,6 +75,7 @@ pub struct GuiGreedApp {
     rule_refresh_handle: RefCell<Option<JoinHandle<Result<ClassCache, GetOriginsAndClassesError>>>>,
     show_save_on_quit_dialog: bool,
     allowed_to_quit: bool,
+    error_text: Option<String>,
 }
 
 impl GuiGreedApp {
@@ -143,6 +146,7 @@ impl GuiGreedApp {
                 rule_refresh_handle: RefCell::new(None),
                 show_save_on_quit_dialog: false,
                 allowed_to_quit: false,
+                error_text: None,
             }
         } else {
             GuiGreedApp {
@@ -164,6 +168,7 @@ impl GuiGreedApp {
                 rule_refresh_handle: RefCell::new(None),
                 show_save_on_quit_dialog: false,
                 allowed_to_quit: false,
+                error_text: None,
             }
         }
     }
@@ -189,7 +194,9 @@ impl GuiGreedApp {
                     if dialog.show(ctx).selected() {
                         if let Some(file) = dialog.path() {
                             let picked_file = file.to_str().map_or_else(String::new, String::from);
-                            let new_save = Save::from_file(file).map_err(|err| error!("Error loading save file: {}", err)).ok();
+                            let new_save = Save::from_file(file).map_err(|err| {
+                                error_log_and_popup(&mut self.error_text, format!("Error loading save file: {err}"));
+                            }).ok();
                             if new_save.is_some() {
                                 self.current_save = new_save;
                                 self.app_state.set_current_campaign_path(picked_file);
@@ -209,7 +216,9 @@ impl GuiGreedApp {
 
                                 match save.to_file(file.clone()) {
                                     Ok(()) => info!("Successfully saved file to {:?}", file),
-                                    Err(err) => error!("Error while saving to file {:?}: {}", file, err),
+                                    Err(err) => {
+                                        error_log_and_popup(&mut self.error_text, format!("Error while saving to file {file:?}: {err}"));
+                                    },
                                 }
                             }
                         }
@@ -354,7 +363,10 @@ impl GuiGreedApp {
                         self.refresh_campaign();
                     }
                     Err(err) => {
-                        error!("Error refreshing rules: {}", err);
+                        error_log_and_popup(
+                            &mut self.error_text,
+                            format!("Error refreshing rules: {err}"),
+                        );
                     }
                 }
             }
@@ -680,11 +692,13 @@ impl eframe::App for GuiGreedApp {
                             self.allowed_to_quit = true;
                             if let Some(path) = self.app_state.get_current_campaign_path() {
                                 if let Some(save) = &self.current_save {
-                                    if save
-                                        .to_file(path)
-                                        .map_err(|err| error!("Error when saving file: {}", err))
-                                        .is_ok()
-                                    {
+                                    let save_result = save.to_file(path).map_err(|err| {
+                                        error_log_and_popup(
+                                            &mut self.error_text,
+                                            format!("Error when saving file: {err}"),
+                                        );
+                                    });
+                                    if save_result.is_ok() {
                                         frame.close();
                                     }
                                 }
@@ -697,6 +711,16 @@ impl eframe::App for GuiGreedApp {
                         }
                     });
                 });
+        }
+
+        let close_error_popup = if let Some(text) = &self.error_text {
+            ErrorPopup::new(text).show(ctx)
+        } else {
+            false
+        };
+
+        if close_error_popup {
+            self.error_text = None;
         }
     }
 
