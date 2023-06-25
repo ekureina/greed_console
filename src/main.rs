@@ -58,7 +58,7 @@ fn main() {
                     .enable_all()
                     .build()
                     .unwrap();
-                rt.block_on(google::get_origins_and_classes())
+                rt.block_on(google::get_origins_and_classes()).unwrap()
             };
             Box::new(player::GuiGreedApp::new(cc, class_cache))
         }),

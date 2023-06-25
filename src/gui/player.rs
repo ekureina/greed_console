@@ -1,5 +1,6 @@
 use super::state::AppState;
 use super::widgets::panels::StatsPanel;
+use crate::google::GetOriginsAndClassesError;
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 use crate::model::classes::{Class, ClassCache, ClassPassive, ClassUtility};
 use crate::model::game_state::GameState;
@@ -69,7 +70,7 @@ pub struct GuiGreedApp {
     character_origin: Option<Class>,
     character_classes: Vec<Class>,
     rule_refresh_runtime: Runtime,
-    rule_refresh_handle: RefCell<Option<JoinHandle<ClassCache>>>,
+    rule_refresh_handle: RefCell<Option<JoinHandle<Result<ClassCache, GetOriginsAndClassesError>>>>,
     show_save_on_quit_dialog: bool,
     allowed_to_quit: bool,
 }
@@ -335,18 +336,26 @@ impl GuiGreedApp {
             {
                 info!("Rules refreshed...");
                 let refresh_handle = self.rule_refresh_handle.replace(None);
-                self.class_cache = self
+                match self
                     .rule_refresh_runtime
                     .block_on(async { join!(refresh_handle.unwrap()) })
                     .0
-                    .unwrap();
-                eframe::set_value(
-                    frame.storage_mut().unwrap(),
-                    "class_cache",
-                    &self.class_cache,
-                );
-                info!("Campaign updated to new rules.");
-                self.refresh_campaign();
+                    .unwrap()
+                {
+                    Ok(class_cache) => {
+                        self.class_cache = class_cache;
+                        eframe::set_value(
+                            frame.storage_mut().unwrap(),
+                            "class_cache",
+                            &self.class_cache,
+                        );
+                        info!("Campaign updated to new rules.");
+                        self.refresh_campaign();
+                    }
+                    Err(err) => {
+                        error!("Error refreshing rules: {}", err);
+                    }
+                }
             }
         }
     }
