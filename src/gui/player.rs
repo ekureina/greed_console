@@ -18,6 +18,8 @@ use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
 
 use std::cell::RefCell;
+use std::ffi::OsString;
+use std::path::Path;
 use std::time::Duration;
 
 /*
@@ -60,7 +62,7 @@ pub struct GuiGreedApp {
     game_state: GameState,
     app_state: AppState,
     new_campaign_name_entry: String,
-    current_save: Option<Save>,
+    current_save: Option<(OsString, Save)>,
     open_file_dialog: Option<FileDialog>,
     save_file_dialog: Option<FileDialog>,
     utilities: Vec<ClassUtility>,
@@ -79,9 +81,13 @@ pub struct GuiGreedApp {
 }
 
 impl GuiGreedApp {
-    pub fn new(cc: &eframe::CreationContext, class_cache: ClassCache) -> GuiGreedApp {
+    pub fn new<'a, P: Into<&'a str>>(
+        cc: &eframe::CreationContext,
+        class_cache: ClassCache,
+        campaign_path_to_load: Option<P>,
+    ) -> GuiGreedApp {
         info!("Starting up app!");
-        let mut app_state = if let Some(storage) = cc.storage {
+        let app_state = if let Some(storage) = cc.storage {
             eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
         } else {
             AppState::new()
@@ -95,17 +101,13 @@ impl GuiGreedApp {
             .build()
             .unwrap();
 
-        if let Some(save) = app_state
-            .get_current_campaign_path()
+        let load_path = campaign_path_to_load
+            .map(|path| Path::new(path.into()))
+            .filter(|path| path.is_file());
+
+        if let Some(save) = load_path
             .map(Save::from_file)
-            .and_then(|result| {
-                result
-                    .map_err(|err| {
-                        error!("{}", err);
-                        app_state.clear_current_campaign_path();
-                    })
-                    .ok()
-            })
+            .and_then(|result| result.map_err(|err| error!("{err}")).ok())
         {
             game_state.set_round(save.get_round());
 
@@ -131,7 +133,7 @@ impl GuiGreedApp {
                 game_state,
                 app_state,
                 new_campaign_name_entry: String::new(),
-                current_save: Some(save),
+                current_save: Some((load_path.unwrap().into(), save)),
                 open_file_dialog: None,
                 save_file_dialog: None,
                 utilities,
@@ -193,13 +195,11 @@ impl GuiGreedApp {
                 if let Some(dialog) = &mut self.open_file_dialog {
                     if dialog.show(ctx).selected() {
                         if let Some(file) = dialog.path() {
-                            let picked_file = file.to_str().map_or_else(String::new, String::from);
-                            let new_save = Save::from_file(file).map_err(|err| {
+                            let new_save = Save::from_file(file.clone()).map_err(|err| {
                                 error_log_and_popup(&mut self.error_text, format!("Error loading save file: {err}"));
                             }).ok();
                             if new_save.is_some() {
-                                self.current_save = new_save;
-                                self.app_state.set_current_campaign_path(picked_file);
+                                self.current_save = new_save.map(|save| (file.into_os_string(), save));
                                 self.refresh_campaign();
                             }
                         }
@@ -209,11 +209,7 @@ impl GuiGreedApp {
                 if let Some(dialog) = &mut self.save_file_dialog {
                     if dialog.show(ctx).selected() {
                         if let Some(file) = dialog.path() {
-                            if let Some(save) = self.current_save.clone() {
-                                if let Some(path) = file.to_str() {
-                                    self.app_state.set_current_campaign_path(path);
-                                }
-
+                            if let Some((_, save)) = &self.current_save {
                                 match save.to_file(file.clone()) {
                                     Ok(()) => info!("Successfully saved file to {:?}", file),
                                     Err(err) => {
@@ -243,7 +239,7 @@ impl GuiGreedApp {
                             && ui.button("Exhaust All Specials").clicked()
                         {
                             self.game_state.exhaust_specials();
-                            if let Some(save) = &mut self.current_save {
+                            if let Some((_, save)) = &mut self.current_save {
                                 self.game_state.get_special_actions()
                                     .iter()
                                     .for_each(|action| save.use_special(action.get_name()));
@@ -254,7 +250,7 @@ impl GuiGreedApp {
                     ui.menu_button("Classes", |ui| self.classes_menu(ui));
                     self.next_part_buttons(ui);
 
-                    if let Some(save) = &mut self.current_save {
+                    if let Some((_, save)) = &mut self.current_save {
                         ui.menu_button("Stats", |ui| {
                             ui.add(StatsPanel::new(save, &mut self.game_state))
                         });
@@ -273,7 +269,10 @@ impl GuiGreedApp {
         ui.menu_button("New", |ui| {
             ui.text_edit_singleline(&mut self.new_campaign_name_entry);
             if ui.button("Create").clicked() {
-                self.current_save = Some(Save::new(&self.new_campaign_name_entry));
+                self.current_save = Some((
+                    String::new().into(),
+                    Save::new(&self.new_campaign_name_entry),
+                ));
                 self.new_campaign_name_entry.clear();
                 self.refresh_campaign();
             }
@@ -284,9 +283,8 @@ impl GuiGreedApp {
             self.open_file_dialog = Some(dialog);
         }
 
-        if ui.button("Save").clicked() {
-            let start_path = self.app_state.get_current_campaign_path().map(Into::into);
-            let mut dialog = FileDialog::save_file(start_path);
+        if ui.button("Save As...").clicked() {
+            let mut dialog = FileDialog::save_file(None);
             dialog.open();
             self.save_file_dialog = Some(dialog);
         }
@@ -315,7 +313,7 @@ impl GuiGreedApp {
     fn next_part_buttons(&mut self, ui: &mut egui::Ui) {
         if ui.button("Next Battle").clicked() {
             self.game_state.next_battle();
-            if let Some(save) = &mut self.current_save {
+            if let Some((_, save)) = &mut self.current_save {
                 save.refresh_specials();
                 save.inc_battle();
             }
@@ -323,7 +321,7 @@ impl GuiGreedApp {
 
         if ui.button("Next Turn").clicked() {
             self.game_state.next_turn();
-            if let Some(save) = &mut self.current_save {
+            if let Some((_, save)) = &mut self.current_save {
                 save.set_round(self.game_state.get_round_num());
             }
         }
@@ -412,7 +410,7 @@ impl GuiGreedApp {
     }
 
     fn refresh_campaign(&mut self) {
-        if let Some(save) = self.current_save.clone() {
+        if let Some((_, save)) = self.current_save.clone() {
             let current_campaign = save.get_character();
             let (utility, passive, primary, secondary, mut special) =
                 current_campaign.get_all_actions(&self.class_cache);
@@ -577,7 +575,7 @@ impl GuiGreedApp {
                         .clicked()
                     {
                         self.game_state.use_special(action.get_name().as_str());
-                        if let Some(save) = &mut self.current_save {
+                        if let Some((_, save)) = &mut self.current_save {
                             save.use_special(action.get_name());
                         }
                         if action.is_named("Action Surge") {
@@ -587,7 +585,7 @@ impl GuiGreedApp {
                     }
                     if !action.is_usable() && ui.button("Refresh").clicked() {
                         self.refresh_special(&action.get_name());
-                        if let Some(save) = &mut self.current_save {
+                        if let Some((_, save)) = &mut self.current_save {
                             save.refresh_special(action.get_name());
                         }
                     }
@@ -603,14 +601,22 @@ impl GuiGreedApp {
         self.secondary_actions.push(class.get_secondary_action());
         self.game_state.push_special(class.get_special_action());
 
-        if let Some(campaign) = self.current_save.as_mut().map(Save::get_character_mut) {
+        if let Some(campaign) = self
+            .current_save
+            .as_mut()
+            .map(|(_, save)| save.get_character_mut())
+        {
             campaign.add_class(class.get_name());
         }
         self.character_classes.push(class);
     }
 
     fn change_origin(&mut self, new_origin: Option<Class>) {
-        if let Some(campaign) = self.current_save.as_mut().map(Save::get_character_mut) {
+        if let Some(campaign) = self
+            .current_save
+            .as_mut()
+            .map(|(_, save)| save.get_character_mut())
+        {
             campaign.replace_origin(new_origin.map(|class| class.get_name()));
             self.refresh_campaign();
         }
@@ -660,7 +666,11 @@ impl GuiGreedApp {
         {
             self.character_classes.remove(class_index);
         }
-        if let Some(campaign) = self.current_save.as_mut().map(Save::get_character_mut) {
+        if let Some(campaign) = self
+            .current_save
+            .as_mut()
+            .map(|(_, save)| save.get_character_mut())
+        {
             campaign.remove_class(class.get_name());
         }
     }
@@ -690,17 +700,15 @@ impl eframe::App for GuiGreedApp {
 
                         if ui.button("Save").clicked() {
                             self.allowed_to_quit = true;
-                            if let Some(path) = self.app_state.get_current_campaign_path() {
-                                if let Some(save) = &self.current_save {
-                                    let save_result = save.to_file(path).map_err(|err| {
-                                        error_log_and_popup(
-                                            &mut self.error_text,
-                                            format!("Error when saving file: {err}"),
-                                        );
-                                    });
-                                    if save_result.is_ok() {
-                                        frame.close();
-                                    }
+                            if let Some((save_path, save)) = &self.current_save {
+                                let save_result = save.to_file(save_path).map_err(|err| {
+                                    error_log_and_popup(
+                                        &mut self.error_text,
+                                        format!("Error when saving file: {err}"),
+                                    );
+                                });
+                                if save_result.is_ok() {
+                                    frame.close();
                                 }
                             }
                         }
@@ -737,13 +745,11 @@ impl eframe::App for GuiGreedApp {
     }
 
     fn on_close_event(&mut self) -> bool {
-        if let Some(path) = self.app_state.get_current_campaign_path() {
-            if let Some(save) = &self.current_save {
-                if let Ok(old_save) = Save::from_file(path) {
-                    if old_save != save.clone() {
-                        self.show_save_on_quit_dialog = true;
-                        return self.allowed_to_quit;
-                    }
+        if let Some((save_path, save)) = &self.current_save {
+            if let Ok(old_save) = Save::from_file(save_path) {
+                if old_save != save.clone() {
+                    self.show_save_on_quit_dialog = true;
+                    return self.allowed_to_quit;
                 }
             }
         }

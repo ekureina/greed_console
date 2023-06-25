@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use serde::{Deserialize, Serialize};
 
 /*
@@ -20,7 +22,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct AppState {
-    current_campaign_path: Option<String>,
+    campaign_path_history: VecDeque<String>,
 }
 
 impl AppState {
@@ -28,16 +30,18 @@ impl AppState {
         AppState::default()
     }
 
-    pub fn get_current_campaign_path(&self) -> Option<String> {
-        self.current_campaign_path.clone()
+    pub fn get_campaign_path_history(&self) -> &VecDeque<String> {
+        &self.campaign_path_history
     }
 
-    pub fn set_current_campaign_path<P: Into<String>>(&mut self, path: P) {
-        self.current_campaign_path = Some(path.into());
+    pub fn add_new_path_to_history<P: Into<String>>(&mut self, path: P) {
+        self.campaign_path_history.push_front(path.into());
     }
 
-    pub fn clear_current_campaign_path(&mut self) {
-        self.current_campaign_path = None;
+    pub fn use_path_more_recently(&mut self, pos: usize) {
+        if pos < self.campaign_path_history.len() {
+            self.campaign_path_history.swap(pos, 0);
+        }
     }
 }
 
@@ -49,6 +53,6 @@ mod tests {
     fn test_new() {
         let app_state = AppState::new();
 
-        assert!(app_state.current_campaign_path.is_none());
+        assert!(app_state.campaign_path_history.is_empty());
     }
 }
