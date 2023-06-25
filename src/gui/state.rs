@@ -48,6 +48,10 @@ impl AppState {
     pub fn is_campaign_history_empty(&self) -> bool {
         self.campaign_path_history.is_empty()
     }
+
+    pub fn get_most_recent_campaign_path(&self) -> Option<&OsString> {
+        self.campaign_path_history.front()
+    }
 }
 
 #[cfg(test)]

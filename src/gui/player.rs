@@ -19,7 +19,7 @@ use tokio::task::JoinHandle;
 
 use std::cell::RefCell;
 use std::ffi::OsString;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /*
@@ -283,9 +283,7 @@ impl GuiGreedApp {
             }
         });
         if ui.button("Open").clicked() {
-            let mut dialog = FileDialog::open_file(None);
-            dialog.open();
-            self.open_file_dialog = Some(dialog);
+            self.open_open_dialog();
         }
 
         if !self.app_state.is_campaign_history_empty() {
@@ -341,16 +339,12 @@ impl GuiGreedApp {
             };
 
             if open_file_picker {
-                let mut dialog = FileDialog::save_file(None);
-                dialog.open();
-                self.save_file_dialog = Some(dialog);
+                self.open_save_as_dialog();
             }
         }
 
         if self.current_save.is_some() && ui.button("Save As...").clicked() {
-            let mut dialog = FileDialog::save_file(None);
-            dialog.open();
-            self.save_file_dialog = Some(dialog);
+            self.open_save_as_dialog();
         }
 
         if self.current_save.is_some() {
@@ -741,6 +735,26 @@ impl GuiGreedApp {
 
     fn refresh_special(&mut self, special_name: &str) {
         self.game_state.refresh_special(special_name);
+    }
+
+    fn open_save_as_dialog(&mut self) {
+        let mut dialog = FileDialog::save_file(
+            self.app_state
+                .get_most_recent_campaign_path()
+                .map(PathBuf::from),
+        );
+        dialog.open();
+        self.save_file_dialog = Some(dialog);
+    }
+
+    fn open_open_dialog(&mut self) {
+        let mut dialog = FileDialog::open_file(
+            self.app_state
+                .get_most_recent_campaign_path()
+                .map(PathBuf::from),
+        );
+        dialog.open();
+        self.open_file_dialog = Some(dialog);
     }
 }
 
