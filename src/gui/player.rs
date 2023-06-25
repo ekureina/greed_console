@@ -209,9 +209,12 @@ impl GuiGreedApp {
                 if let Some(dialog) = &mut self.save_file_dialog {
                     if dialog.show(ctx).selected() {
                         if let Some(file) = dialog.path() {
-                            if let Some((_, save)) = &self.current_save {
+                            if let Some((path, save)) = &mut self.current_save {
                                 match save.to_file(file.clone()) {
-                                    Ok(()) => info!("Successfully saved file to {:?}", file),
+                                    Ok(()) => {
+                                        info!("Successfully saved file to {:?}", file);
+                                        *path = file.into_os_string();
+                                    }
                                     Err(err) => {
                                         error_log_and_popup(&mut self.error_text, format!("Error while saving to file {file:?}: {err}"));
                                     },
@@ -283,7 +286,38 @@ impl GuiGreedApp {
             self.open_file_dialog = Some(dialog);
         }
 
-        if ui.button("Save As...").clicked() {
+        if self.current_save.is_some() && ui.button("Save").clicked() {
+            info!("Attempting to save campaign!");
+            let open_file_picker = if self
+                .current_save
+                .as_ref()
+                .map_or_else(|| false, |(path, _)| path != "")
+            {
+                let (path, save) = self.current_save.as_ref().unwrap();
+                info!("Saving campaign to: '{}'", path.to_string_lossy());
+                save.to_file(path)
+                    .map_err(|err| {
+                        error_log_and_popup(
+                            &mut self.error_text,
+                            format!(
+                                "Failed to save campaign to {}: {err}",
+                                path.to_string_lossy()
+                            ),
+                        );
+                    })
+                    .is_err()
+            } else {
+                true
+            };
+
+            if open_file_picker {
+                let mut dialog = FileDialog::save_file(None);
+                dialog.open();
+                self.save_file_dialog = Some(dialog);
+            }
+        }
+
+        if self.current_save.is_some() && ui.button("Save As...").clicked() {
             let mut dialog = FileDialog::save_file(None);
             dialog.open();
             self.save_file_dialog = Some(dialog);
@@ -751,6 +785,9 @@ impl eframe::App for GuiGreedApp {
                     self.show_save_on_quit_dialog = true;
                     return self.allowed_to_quit;
                 }
+            } else {
+                self.show_save_on_quit_dialog = true;
+                return self.allowed_to_quit;
             }
         }
 
