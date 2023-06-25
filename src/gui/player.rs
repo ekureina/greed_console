@@ -168,92 +168,95 @@ impl GuiGreedApp {
         }
     }
 
-    fn stats_panel(&mut self, ui: &mut egui::Ui) {
-        ui.add(StatsPanel::new(
-            self.current_save.as_mut().unwrap(),
-            &mut self.game_state,
-        ));
-    }
-
     fn menu_panel(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("menu")
-            .resizable(false)
-            .show(ctx, |ui| {
-                egui::menu::bar(ui, |ui| {
-                    let about_response = ui.button("About");
-                    let about_popup_id = ui.make_persistent_id("about_popup_id");
-                    if about_response.clicked() {
-                        ui.memory_mut(|mem| mem.toggle_popup(about_popup_id));
-                    }
-                    egui::popup_below_widget(ui, about_popup_id, &about_response, |ui| {
-                        ui.set_min_width(450.0);
-                        ui.label(COPYRIGHT_NOTICE);
-                    });
+        egui::TopBottomPanel::top("menu").resizable(false).show(ctx, |ui| {
+            egui::menu::bar(ui, |ui| {
+                let about_response = ui.button("About");
+                let about_popup_id = ui.make_persistent_id("about_popup_id");
+                if about_response.clicked() {
+                    ui.memory_mut(|mem| mem.toggle_popup(about_popup_id));
+                }
+                egui::popup_below_widget(ui, about_popup_id, &about_response, |ui| {
+                    ui.set_min_width(450.0);
+                    ui.label(COPYRIGHT_NOTICE);
+                });
 
-                    ui.menu_button("Campaign", |ui| {
-                        self.campaign_menu(ui);
-                    });
+                ui.menu_button("Campaign", |ui| {
+                    self.campaign_menu(ui);
+                });
 
-                    if let Some(dialog) = &mut self.open_file_dialog {
-                        if dialog.show(ctx).selected() {
-                            if let Some(file) = dialog.path() {
-                                let picked_file = file.to_str().map_or_else(String::new, String::from);
-                                self.current_save = Some(Save::from_file(&file).unwrap());
+                if let Some(dialog) = &mut self.open_file_dialog {
+                    if dialog.show(ctx).selected() {
+                        if let Some(file) = dialog.path() {
+                            let picked_file = file.to_str().map_or_else(String::new, String::from);
+                            let new_save = Save::from_file(file).map_err(|err| error!("Error loading save file: {}", err)).ok();
+                            if new_save.is_some() {
+                                self.current_save = new_save;
                                 self.app_state.set_current_campaign_path(picked_file);
                                 self.refresh_campaign();
                             }
                         }
                     }
+                }
 
-                    if let Some(dialog) = &mut self.save_file_dialog {
-                        if dialog.show(ctx).selected() {
-                            if let Some(file) = dialog.path() {
-                                if let Some(save) = self.current_save.clone() {
-                                    if let Some(path) = file.to_str() {
-                                        self.app_state.set_current_campaign_path(path);
-                                    }
+                if let Some(dialog) = &mut self.save_file_dialog {
+                    if dialog.show(ctx).selected() {
+                        if let Some(file) = dialog.path() {
+                            if let Some(save) = self.current_save.clone() {
+                                if let Some(path) = file.to_str() {
+                                    self.app_state.set_current_campaign_path(path);
+                                }
 
-                                    save.to_file(file).unwrap();
+                                match save.to_file(file.clone()) {
+                                    Ok(()) => info!("Successfully saved file to {:?}", file),
+                                    Err(err) => error!("Error while saving to file {:?}: {}", file, err),
                                 }
                             }
                         }
                     }
+                }
 
-                    ui.menu_button("View", |ui| {
-                        self.view_menu(ui);
+                ui.menu_button("View", |ui| {
+                    self.view_menu(ui);
+                });
+
+                if self.current_save.is_some() {
+                    ui.menu_button("Actions", |ui| {
+                        if ui.button("Refresh Secondary Action").clicked() {
+                            self.game_state.extra_secondary();
+                        }
+
+                        if self
+                            .game_state
+                            .get_special_actions()
+                            .iter()
+                            .any(SpecialAction::is_usable)
+                            && ui.button("Exhaust All Specials").clicked()
+                        {
+                            self.game_state.exhaust_specials();
+                            if let Some(save) = &mut self.current_save {
+                                self.game_state.get_special_actions()
+                                    .iter()
+                                    .for_each(|action| save.use_special(action.get_name()));
+                            }
+                        }
                     });
 
-                    if self.current_save.is_some() {
-                        ui.menu_button("Actions", |ui| {
-                            if ui.button("Refresh Secondary Action").clicked() {
-                                self.game_state.extra_secondary();
-                            }
+                    ui.menu_button("Classes", |ui| self.classes_menu(ui));
+                    self.next_part_buttons(ui);
 
-                            if self
-                                .game_state
-                                .get_special_actions()
-                                .iter()
-                                .any(SpecialAction::is_usable)
-                                && ui.button("Exhaust All Specials").clicked()
-                            {
-                                self.game_state.exhaust_specials();
-                                if let Some(save) = &mut self.current_save {
-                                self.game_state.get_special_actions().iter().for_each(|action| save.use_special(action.get_name()));
-                                    }
-                            }
+                    if let Some(save) = &mut self.current_save {
+                        ui.menu_button("Stats", |ui| {
+                            ui.add(StatsPanel::new(save, &mut self.game_state))
                         });
-
-                        ui.menu_button("Classes", |ui| self.classes_menu(ui));
-                        self.next_part_buttons(ui);
-
-                        ui.menu_button("Stats", |ui| self.stats_panel(ui));
                     }
+                }
 
-                    self.refresh_rules(ui, frame);
+                self.refresh_rules(ui, frame);
 
-                    ui.hyperlink_to("Greed Rulset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
-                });
+                ui.hyperlink_to("Greed Rulset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
             });
+        });
     }
 
     fn campaign_menu(&mut self, ui: &mut egui::Ui) {
@@ -344,11 +347,9 @@ impl GuiGreedApp {
                 {
                     Ok(class_cache) => {
                         self.class_cache = class_cache;
-                        eframe::set_value(
-                            frame.storage_mut().unwrap(),
-                            "class_cache",
-                            &self.class_cache,
-                        );
+                        if let Some(storage) = frame.storage_mut() {
+                            eframe::set_value(storage, "class_cache", &self.class_cache);
+                        }
                         info!("Campaign updated to new rules.");
                         self.refresh_campaign();
                     }
@@ -679,8 +680,13 @@ impl eframe::App for GuiGreedApp {
                             self.allowed_to_quit = true;
                             if let Some(path) = self.app_state.get_current_campaign_path() {
                                 if let Some(save) = &self.current_save {
-                                    save.to_file(path).unwrap();
-                                    frame.close();
+                                    if save
+                                        .to_file(path)
+                                        .map_err(|err| error!("Error when saving file: {}", err))
+                                        .is_ok()
+                                    {
+                                        frame.close();
+                                    }
                                 }
                             }
                         }
