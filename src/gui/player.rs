@@ -18,6 +18,7 @@ use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
 
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -284,6 +285,7 @@ impl GuiGreedApp {
         if !self.app_state.is_campaign_history_empty() {
             ui.menu_button("Recent Campaigns", |ui| {
                 let mut invalid_paths = vec![];
+                let mut distintness_decider = HashSet::new();
                 for (pos, path) in self
                     .app_state
                     .get_campaign_path_history()
@@ -291,7 +293,9 @@ impl GuiGreedApp {
                     .into_iter()
                     .enumerate()
                 {
-                    if Save::from_file(path.clone()).is_err() {
+                    if Save::from_file(path.clone()).is_err()
+                        || !distintness_decider.insert(path.clone())
+                    {
                         invalid_paths.push(pos);
                     } else if ui.button(path.clone().to_string_lossy()).clicked() {
                         self.app_state.use_path_more_recently(pos);
