@@ -1,8 +1,7 @@
 use super::state::AppState;
 use super::widgets::panels::StatsPanel;
-use super::widgets::popups::ErrorPopup;
 use crate::google::GetOriginsAndClassesError;
-use crate::gui::util::error_log_and_popup;
+use crate::gui::util::error_log_and_notify;
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 use crate::model::classes::{Class, ClassCache, ClassPassive, ClassUtility};
 use crate::model::game_state::GameState;
@@ -12,6 +11,7 @@ use eframe::egui;
 use eframe::glow::Context;
 use eframe::Storage;
 use egui_file::FileDialog;
+use egui_notify::Toasts;
 use log::{error, info};
 use tokio::join;
 use tokio::runtime::Runtime;
@@ -77,7 +77,7 @@ pub struct GuiGreedApp {
     rule_refresh_handle: RefCell<Option<JoinHandle<Result<ClassCache, GetOriginsAndClassesError>>>>,
     show_save_on_quit_dialog: bool,
     allowed_to_quit: bool,
-    error_text: Option<String>,
+    toasts: Toasts,
 }
 
 impl GuiGreedApp {
@@ -104,6 +104,8 @@ impl GuiGreedApp {
         let load_path = campaign_path_to_load
             .map(|path| Path::new(path.into()))
             .filter(|path| path.is_file());
+
+        let toasts = Toasts::default();
 
         if let Some(save) = load_path
             .map(Save::from_file)
@@ -148,7 +150,7 @@ impl GuiGreedApp {
                 rule_refresh_handle: RefCell::new(None),
                 show_save_on_quit_dialog: false,
                 allowed_to_quit: false,
-                error_text: None,
+                toasts,
             }
         } else {
             GuiGreedApp {
@@ -170,7 +172,7 @@ impl GuiGreedApp {
                 rule_refresh_handle: RefCell::new(None),
                 show_save_on_quit_dialog: false,
                 allowed_to_quit: false,
-                error_text: None,
+                toasts,
             }
         }
     }
@@ -212,7 +214,7 @@ impl GuiGreedApp {
                                         self.app_state.add_new_path_to_history(path.clone());
                                     }
                                     Err(err) => {
-                                        error_log_and_popup(&mut self.error_text, format!("Error while saving to file {file:?}: {err}"));
+                                        error_log_and_notify(&mut self.toasts, format!("Error while saving to file {file:?}: {err}"));
                                     },
                                 }
                             }
@@ -316,8 +318,8 @@ impl GuiGreedApp {
                 info!("Saving campaign to: '{}'", path.to_string_lossy());
                 save.to_file(path)
                     .map_err(|err| {
-                        error_log_and_popup(
-                            &mut self.error_text,
+                        error_log_and_notify(
+                            &mut self.toasts,
                             format!(
                                 "Failed to save campaign to {}: {err}",
                                 path.to_string_lossy()
@@ -410,8 +412,8 @@ impl GuiGreedApp {
                         self.refresh_campaign();
                     }
                     Err(err) => {
-                        error_log_and_popup(
-                            &mut self.error_text,
+                        error_log_and_notify(
+                            &mut self.toasts,
                             format!("Error refreshing rules: {err}"),
                         );
                     }
@@ -750,8 +752,8 @@ impl GuiGreedApp {
 
     fn open_new_save(&mut self, new_save_path: &OsString) {
         let new_save = Save::from_file(new_save_path.clone()).map_err(|err| {
-            error_log_and_popup(
-                &mut self.error_text,
+            error_log_and_notify(
+                &mut self.toasts,
                 format!(
                     "Error loading save file at '{}': {err}",
                     new_save_path.to_string_lossy()
@@ -762,8 +764,8 @@ impl GuiGreedApp {
             let current_save_saved = if let Some((path, save)) = &mut self.current_save {
                 save.to_file(path.clone())
                     .map_err(|err| {
-                        error_log_and_popup(
-                            &mut self.error_text,
+                        error_log_and_notify(
+                            &mut self.toasts,
                             format!(
                                 "Unable to save current save to {}: {err}",
                                 path.to_string_lossy()
@@ -786,6 +788,8 @@ impl eframe::App for GuiGreedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         frame.set_window_title("Greed Console");
 
+        self.toasts.show(ctx);
+
         self.menu_panel(ctx, frame);
 
         self.main_panel(ctx);
@@ -804,8 +808,8 @@ impl eframe::App for GuiGreedApp {
                             self.allowed_to_quit = true;
                             if let Some((save_path, save)) = &self.current_save {
                                 let save_result = save.to_file(save_path).map_err(|err| {
-                                    error_log_and_popup(
-                                        &mut self.error_text,
+                                    error_log_and_notify(
+                                        &mut self.toasts,
                                         format!("Error when saving file: {err}"),
                                     );
                                 });
@@ -821,16 +825,6 @@ impl eframe::App for GuiGreedApp {
                         }
                     });
                 });
-        }
-
-        let close_error_popup = if let Some(text) = &self.error_text {
-            ErrorPopup::new(text).show(ctx)
-        } else {
-            false
-        };
-
-        if close_error_popup {
-            self.error_text = None;
         }
     }
 
