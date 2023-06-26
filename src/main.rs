@@ -21,7 +21,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::gui::player;
+use crate::gui::main::GuiGreedApp;
 
 use eframe::NativeOptions;
 use model::classes::ClassCache;
@@ -60,7 +60,7 @@ fn main() {
                     .unwrap();
                 rt.block_on(google::get_origins_and_classes()).unwrap()
             };
-            Box::new(player::GuiGreedApp::new(cc, class_cache, Some("")))
+            Box::new(GuiGreedApp::new(cc, class_cache, Some("")))
         }),
     )
     .unwrap();
