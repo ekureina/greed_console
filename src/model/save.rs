@@ -1,6 +1,7 @@
 use ron::{from_str, to_string};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::ffi::OsString;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::num::Wrapping;
@@ -113,5 +114,50 @@ impl Default for Save {
             character: Character::default(),
             used_specials: HashSet::default(),
         }
+    }
+}
+
+#[derive(Clone, Default, Debug)]
+pub struct SaveWithPath {
+    path: Option<OsString>,
+    save: Save,
+}
+
+impl SaveWithPath {
+    pub fn new(save: Save) -> SaveWithPath {
+        SaveWithPath { path: None, save }
+    }
+
+    pub fn new_with_path<P: Into<OsString>>(save: Save, path: P) -> SaveWithPath {
+        SaveWithPath {
+            path: Some(path.into()),
+            save,
+        }
+    }
+
+    pub fn save(&self) -> Option<Result<(), SaveToFileError>> {
+        self.path.as_ref().map(|path| self.save.to_file(path))
+    }
+
+    pub fn save_to(&self, path: impl AsRef<Path>) -> Result<(), SaveToFileError> {
+        self.save.to_file(path)
+    }
+
+    pub fn set_path<P: Into<OsString>>(&mut self, path: P) -> Option<OsString> {
+        let out = self.path.clone();
+        self.path = Some(path.into());
+        out
+    }
+
+    pub fn get_path(&self) -> &Option<OsString> {
+        &self.path
+    }
+
+    pub fn get_save(&self) -> &Save {
+        &self.save
+    }
+
+    pub fn get_save_mut(&mut self) -> &mut Save {
+        &mut self.save
     }
 }

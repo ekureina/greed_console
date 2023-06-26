@@ -1,11 +1,10 @@
+use super::campaign::CampaignGui;
 use super::state::AppState;
-use super::widgets::panels::StatsPanel;
 use crate::google::GetOriginsAndClassesError;
 use crate::gui::util::error_log_and_notify;
-use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
-use crate::model::classes::{Class, ClassCache, ClassPassive, ClassUtility};
+use crate::model::classes::ClassCache;
 use crate::model::game_state::GameState;
-use crate::model::save::Save;
+use crate::model::save::{Save, SaveWithPath};
 
 use eframe::egui;
 use eframe::glow::Context;
@@ -21,6 +20,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::time::Duration;
 
 /*
@@ -60,19 +60,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ";
 
 pub struct GuiGreedApp {
-    game_state: GameState,
+    campaign_gui: Option<CampaignGui>,
     app_state: AppState,
     new_campaign_name_entry: String,
-    current_save: Option<(OsString, Save)>,
     file_dialog: Option<FileDialog>,
-    utilities: Vec<ClassUtility>,
-    show_utilities: bool,
-    passives: Vec<ClassPassive>,
-    primary_actions: Vec<PrimaryAction>,
-    secondary_actions: Vec<SecondaryAction>,
-    class_cache: ClassCache,
-    character_origin: Option<Class>,
-    character_classes: Vec<Class>,
+    class_cache_rc: Rc<RefCell<ClassCache>>,
     rule_refresh_runtime: Runtime,
     rule_refresh_handle: RefCell<Option<JoinHandle<Result<ClassCache, GetOriginsAndClassesError>>>>,
     show_save_on_quit_dialog: bool,
@@ -94,6 +86,7 @@ impl GuiGreedApp {
         };
 
         let mut game_state = GameState::default();
+        let class_cache_rc = Rc::new(RefCell::new(class_cache));
 
         let rule_refresh_runtime = tokio::runtime::Builder::new_multi_thread()
             .thread_name("rules-refresh-worker")
@@ -116,7 +109,7 @@ impl GuiGreedApp {
             let character = save.get_character();
 
             let (utilities, passives, primary_actions, secondary_actions, mut special_actions) =
-                character.get_all_actions(&class_cache);
+                character.get_all_actions(&class_cache_rc.borrow());
             let used_specials = save.get_used_specials();
             for action in &mut special_actions {
                 if used_specials.contains(&action.get_name()) {
@@ -124,27 +117,38 @@ impl GuiGreedApp {
                 }
                 game_state.push_special(action.clone());
             }
+
+            let class_cache_for_origin = class_cache_rc.borrow();
             let character_origin = character
                 .get_origin()
-                .and_then(|origin_name| class_cache.get_origin(origin_name.as_str()))
+                .and_then(|origin_name| class_cache_for_origin.get_origin(origin_name.as_str()))
                 .cloned();
+            drop(class_cache_for_origin);
 
-            let character_classes = class_cache.map_to_concrete_classes(character.get_classes());
+            let character_classes = class_cache_rc
+                .borrow()
+                .map_to_concrete_classes(character.get_classes());
 
-            GuiGreedApp {
+            let save_with_path = SaveWithPath::new_with_path(save, load_path.unwrap());
+
+            let campaign_gui = CampaignGui::new(
                 game_state,
-                app_state,
-                new_campaign_name_entry: String::new(),
-                current_save: Some((load_path.unwrap().into(), save)),
-                file_dialog: None,
+                save_with_path,
                 utilities,
-                show_utilities: true,
                 passives,
                 primary_actions,
                 secondary_actions,
-                class_cache,
-                character_origin,
                 character_classes,
+                character_origin,
+                class_cache_rc.clone(),
+            );
+
+            GuiGreedApp {
+                campaign_gui: Some(campaign_gui),
+                app_state,
+                new_campaign_name_entry: String::new(),
+                file_dialog: None,
+                class_cache_rc,
                 rule_refresh_runtime,
                 rule_refresh_handle: RefCell::new(None),
                 show_save_on_quit_dialog: false,
@@ -153,19 +157,11 @@ impl GuiGreedApp {
             }
         } else {
             GuiGreedApp {
-                game_state,
+                campaign_gui: None,
                 app_state,
                 new_campaign_name_entry: String::new(),
-                current_save: None,
                 file_dialog: None,
-                utilities: vec![],
-                show_utilities: true,
-                passives: vec![],
-                primary_actions: vec![],
-                secondary_actions: vec![],
-                class_cache,
-                character_origin: None,
-                character_classes: vec![],
+                class_cache_rc,
                 rule_refresh_runtime,
                 rule_refresh_handle: RefCell::new(None),
                 show_save_on_quit_dialog: false,
@@ -192,72 +188,6 @@ impl GuiGreedApp {
                     self.campaign_menu(ui);
                 });
 
-                if let Some(dialog) = &mut self.file_dialog {
-                    if dialog.show(ctx).selected() {
-                        if let Some(file) = dialog.path() {
-                            match dialog.dialog_type() {
-                                egui_file::DialogType::OpenFile => {
-                                    self.app_state.add_new_path_to_history(file.clone());
-                                    self.open_new_save(&file.as_os_str().to_owned());
-                                },
-                                egui_file::DialogType::SaveFile => {
-                                    if let Some((path, save)) = &mut self.current_save {
-                                        match save.to_file(file.clone()) {
-                                            Ok(()) => {
-                                                info!("Successfully saved file to {:?}", file);
-                                                *path = file.into_os_string();
-                                                self.app_state.add_new_path_to_history(path.clone());
-                                            }
-                                            Err(err) => {
-                                                error_log_and_notify(&mut self.toasts, format!("Error while saving to file {file:?}: {err}"));
-                                            },
-                                        }
-                                    }
-                                }
-                                egui_file::DialogType::SelectFolder => {
-                                    error_log_and_notify(&mut self.toasts, "Unreachable File dialog reached, need to handle!");
-                                },
-                            }
-                        }
-                    }
-                }
-
-                ui.menu_button("View", |ui| {
-                    self.view_menu(ui);
-                });
-
-                if self.current_save.is_some() {
-                    ui.menu_button("Actions", |ui| {
-                        if ui.button("Refresh Secondary Action").clicked() {
-                            self.game_state.extra_secondary();
-                        }
-
-                        if self
-                            .game_state
-                            .get_special_actions()
-                            .iter()
-                            .any(SpecialAction::is_usable)
-                            && ui.button("Exhaust All Specials").clicked()
-                        {
-                            self.game_state.exhaust_specials();
-                            if let Some((_, save)) = &mut self.current_save {
-                                self.game_state.get_special_actions()
-                                    .iter()
-                                    .for_each(|action| save.use_special(action.get_name()));
-                            }
-                        }
-                    });
-
-                    ui.menu_button("Classes", |ui| self.classes_menu(ui));
-                    self.next_part_buttons(ui);
-
-                    if let Some((_, save)) = &mut self.current_save {
-                        ui.menu_button("Stats", |ui| {
-                            ui.add(StatsPanel::new(save, &mut self.game_state))
-                        });
-                    }
-                }
-
                 self.refresh_rules(ui, frame);
 
                 ui.hyperlink_to("Greed Rulset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
@@ -270,12 +200,14 @@ impl GuiGreedApp {
         ui.menu_button("New", |ui| {
             ui.text_edit_singleline(&mut self.new_campaign_name_entry);
             if ui.button("Create").clicked() {
-                self.current_save = Some((
-                    String::new().into(),
-                    Save::new(&self.new_campaign_name_entry),
+                self.campaign_gui = Some(CampaignGui::new_refreshable(
+                    SaveWithPath::new(Save::new(self.new_campaign_name_entry.clone())),
+                    Rc::new(RefCell::new(ClassCache::new(vec![], vec![]))),
                 ));
                 self.new_campaign_name_entry.clear();
-                self.refresh_campaign();
+                self.campaign_gui
+                    .as_mut()
+                    .map(CampaignGui::refresh_campaign);
             }
         });
         if ui.button("Open").clicked() {
@@ -310,23 +242,18 @@ impl GuiGreedApp {
             });
         }
 
-        if self.current_save.is_some() && ui.button("Save").clicked() {
+        if self.campaign_gui.is_some() && ui.button("Save").clicked() {
             info!("Attempting to save campaign!");
-            let open_file_picker = if self
-                .current_save
-                .as_ref()
-                .map_or_else(|| false, |(path, _)| path != "")
-            {
-                let (path, save) = self.current_save.as_ref().unwrap();
-                info!("Saving campaign to: '{}'", path.to_string_lossy());
-                save.to_file(path)
+            let open_file_picker = if self.campaign_gui.as_ref().unwrap().get_path().is_some() {
+                self.campaign_gui
+                    .as_ref()
+                    .unwrap()
+                    .save()
+                    .unwrap()
                     .map_err(|err| {
                         error_log_and_notify(
                             &mut self.toasts,
-                            format!(
-                                "Failed to save campaign to {}: {err}",
-                                path.to_string_lossy()
-                            ),
+                            format!("Failed to save campaign: {err}",),
                         );
                     })
                     .is_err()
@@ -339,45 +266,8 @@ impl GuiGreedApp {
             }
         }
 
-        if self.current_save.is_some() && ui.button("Save As...").clicked() {
+        if self.campaign_gui.is_some() && ui.button("Save As...").clicked() {
             self.open_save_as_dialog();
-        }
-
-        if self.current_save.is_some() {
-            ui.menu_button("Origin", |ui| {
-                let old_origin = self.character_origin.clone();
-                for origin in self.class_cache.get_origins() {
-                    ui.radio_value(
-                        &mut self.character_origin,
-                        Some(origin.clone()),
-                        origin.get_name(),
-                    );
-                }
-                if self.character_origin != old_origin {
-                    self.change_origin(self.character_origin.clone());
-                }
-            });
-        }
-    }
-
-    fn view_menu(&mut self, ui: &mut egui::Ui) {
-        ui.checkbox(&mut self.show_utilities, "Utilities");
-    }
-
-    fn next_part_buttons(&mut self, ui: &mut egui::Ui) {
-        if ui.button("Next Battle").clicked() {
-            self.game_state.next_battle();
-            if let Some((_, save)) = &mut self.current_save {
-                save.refresh_specials();
-                save.inc_battle();
-            }
-        }
-
-        if ui.button("Next Turn").clicked() {
-            self.game_state.next_turn();
-            if let Some((_, save)) = &mut self.current_save {
-                save.set_round(self.game_state.get_round_num());
-            }
         }
     }
 
@@ -407,12 +297,18 @@ impl GuiGreedApp {
                     .unwrap()
                 {
                     Ok(class_cache) => {
-                        self.class_cache = class_cache;
+                        *self.class_cache_rc.borrow_mut() = class_cache;
                         if let Some(storage) = frame.storage_mut() {
-                            eframe::set_value(storage, "class_cache", &self.class_cache);
+                            eframe::set_value(
+                                storage,
+                                "class_cache",
+                                &*self.class_cache_rc.borrow(),
+                            );
                         }
                         info!("Campaign updated to new rules.");
-                        self.refresh_campaign();
+                        self.campaign_gui
+                            .as_mut()
+                            .map(CampaignGui::refresh_campaign);
                     }
                     Err(err) => {
                         error_log_and_notify(
@@ -425,312 +321,12 @@ impl GuiGreedApp {
         }
     }
 
-    fn classes_menu(&mut self, ui: &mut egui::Ui) {
-        if self.character_classes.len() != self.class_cache.get_class_cache_count() {
-            ui.menu_button("Add", |ui| {
-                let mut classes_to_add = vec![];
-                let current_class_names = self
-                    .character_classes
-                    .iter()
-                    .map(Class::get_name)
-                    .collect::<Vec<String>>();
-
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    for class in self.class_cache.get_classes() {
-                        if !self.character_classes.contains(class)
-                            && class.get_class_available(&current_class_names)
-                            && ui.button(class.get_name()).clicked()
-                        {
-                            classes_to_add.push(class.clone());
-                        }
-                    }
-                });
-                for class in classes_to_add {
-                    self.add_new_class(class);
-                }
-            });
-        }
-        if !self.character_classes.is_empty() {
-            ui.menu_button("Remove", |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    for class in self.character_classes.clone() {
-                        if ui.button(class.get_name()).clicked() {
-                            self.remove_class(&class);
-                        }
-                    }
-                });
-            });
-        }
-    }
-
-    fn refresh_campaign(&mut self) {
-        if let Some((_, save)) = self.current_save.clone() {
-            let current_campaign = save.get_character();
-            let (utility, passive, primary, secondary, mut special) =
-                current_campaign.get_all_actions(&self.class_cache);
-            self.primary_actions = primary;
-            self.secondary_actions = secondary;
-            self.utilities = utility;
-            self.passives = passive;
-            self.game_state = GameState::default();
-            let used_specials = save.get_used_specials();
-            for action in &mut special {
-                if used_specials.contains(&action.get_name()) {
-                    action.use_action();
-                }
-                self.game_state.push_special(action.clone());
-            }
-            let new_origin = current_campaign
-                .get_origin()
-                .and_then(|origin_name| self.class_cache.get_origin(origin_name.as_str()))
-                .cloned();
-
-            self.character_origin = new_origin;
-            self.game_state.set_round(save.get_round());
-        }
-    }
-
     fn main_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            egui::ScrollArea::both().show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    if !self.utilities.is_empty() && self.show_utilities {
-                        ui.vertical(|ui| {
-                            self.utility_panel(ui);
-                        });
-                    }
-                    if !self.passives.is_empty() {
-                        ui.vertical(|ui| {
-                            self.passive_panel(ui);
-                        });
-                    }
-                    // List of all non-Execute primary actions
-                    if self.primary_actions.len() > 1
-                        || (self.primary_actions.len() == 1
-                            && self.primary_actions[0].get_name() != "Execute")
-                    {
-                        ui.vertical(|ui| {
-                            self.primary_panel(ui);
-                        });
-                    }
-
-                    if !self.secondary_actions.is_empty() {
-                        ui.vertical(|ui| {
-                            self.secondary_panel(ui);
-                        });
-                    }
-
-                    // List of all non-Action surge specials
-                    if !(self.game_state.get_special_actions().is_empty()) {
-                        ui.vertical(|ui| {
-                            self.special_panel(ui);
-                        });
-                    }
-                });
-
-                if !(self.primary_actions.is_empty()
-                    && self.secondary_actions.is_empty()
-                    && self.game_state.get_special_actions().is_empty())
-                    && ui
-                        .add_enabled(
-                            self.game_state.get_inspiration_usable(),
-                            egui::Button::new("Use Inspiration"),
-                        )
-                        .clicked()
-                {
-                    self.game_state.use_inspiration();
-                }
-            });
-        });
-    }
-
-    fn utility_panel(&mut self, ui: &mut egui::Ui) {
-        ui.set_width(ui.available_width() / 5.0);
-        ui.group(|ui| {
-            ui.label("Utilities:");
-            for utility in &self.utilities {
-                ui.label(utility.get_name())
-                    .on_hover_text(utility.get_description());
+            if let Some(campaign_gui) = &mut self.campaign_gui {
+                campaign_gui.ui(ui);
             }
         });
-    }
-
-    fn passive_panel(&mut self, ui: &mut egui::Ui) {
-        ui.set_width(ui.available_width() / 4.0);
-        ui.group(|ui| {
-            ui.label("Passives:");
-            for passive in &self.passives {
-                ui.label(passive.get_name())
-                    .on_hover_text(passive.get_description());
-            }
-        });
-    }
-
-    fn primary_panel(&mut self, ui: &mut egui::Ui) {
-        ui.set_width(ui.available_width() / 3.0);
-        ui.group(|ui| {
-            ui.label(format!(
-                "Primary Actions ({} remaining):",
-                self.game_state.get_primary_actions()
-            ));
-            for action in &self.primary_actions {
-                if ui
-                    .add_enabled(
-                        self.game_state.get_primary_usable(),
-                        egui::Button::new(action.get_name()),
-                    )
-                    .on_hover_text(action.get_description())
-                    .on_disabled_hover_text(action.get_description())
-                    .clicked()
-                    && action.get_name() != "Execute"
-                {
-                    self.game_state.use_primary();
-                }
-            }
-        });
-    }
-
-    fn secondary_panel(&mut self, ui: &mut egui::Ui) {
-        ui.set_width(ui.available_width() / 2.0);
-        ui.group(|ui| {
-            ui.label(format!(
-                "Secondary Actions ({} remaining):",
-                self.game_state.get_secondary_actions()
-            ));
-            for action in &self.secondary_actions {
-                if ui
-                    .add_enabled(
-                        self.game_state.get_secondary_usable(),
-                        egui::Button::new(action.get_name()),
-                    )
-                    .on_hover_text(action.get_description())
-                    .on_disabled_hover_text(action.get_description())
-                    .clicked()
-                {
-                    self.game_state.use_secondary();
-                }
-            }
-        });
-    }
-
-    fn special_panel(&mut self, ui: &mut egui::Ui) {
-        ui.group(|ui| {
-            ui.label("Specials:");
-
-            for action in &self.game_state.get_special_actions().clone() {
-                ui.horizontal(|ui| {
-                    if ui
-                        .add_enabled(
-                            action.is_usable() && self.game_state.get_any_special_usable(),
-                            egui::Button::new(action.get_name()),
-                        )
-                        .on_hover_text(action.get_description())
-                        .on_disabled_hover_text(action.get_description())
-                        .clicked()
-                    {
-                        self.game_state.use_special(action.get_name().as_str());
-                        if let Some((_, save)) = &mut self.current_save {
-                            save.use_special(action.get_name());
-                        }
-                        if action.is_named("Action Surge") {
-                            self.game_state.extra_primary();
-                            self.game_state.extra_primary();
-                        }
-                    }
-                    if !action.is_usable() && ui.button("Refresh").clicked() {
-                        self.refresh_special(&action.get_name());
-                        if let Some((_, save)) = &mut self.current_save {
-                            save.refresh_special(action.get_name());
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    fn add_new_class(&mut self, class: Class) {
-        self.utilities.push(class.get_utility());
-        self.passives.push(class.get_passive());
-        self.primary_actions.push(class.get_primary_action());
-        self.secondary_actions.push(class.get_secondary_action());
-        self.game_state.push_special(class.get_special_action());
-
-        if let Some(campaign) = self
-            .current_save
-            .as_mut()
-            .map(|(_, save)| save.get_character_mut())
-        {
-            campaign.add_class(class.get_name());
-        }
-        self.character_classes.push(class);
-    }
-
-    fn change_origin(&mut self, new_origin: Option<Class>) {
-        if let Some(campaign) = self
-            .current_save
-            .as_mut()
-            .map(|(_, save)| save.get_character_mut())
-        {
-            campaign.replace_origin(new_origin.map(|class| class.get_name()));
-            self.refresh_campaign();
-        }
-    }
-
-    fn remove_class(&mut self, class: &Class) {
-        if let Some(utility_index) = self
-            .utilities
-            .iter()
-            .position(|action| action.clone() == class.get_utility())
-        {
-            self.utilities.remove(utility_index);
-        }
-        if let Some(passive_index) = self
-            .passives
-            .iter()
-            .position(|action| action.clone() == class.get_passive())
-        {
-            self.passives.remove(passive_index);
-        }
-        if let Some(primary_index) = self
-            .primary_actions
-            .iter()
-            .position(|action| action.clone() == class.get_primary_action())
-        {
-            self.primary_actions.remove(primary_index);
-        }
-        if let Some(secondary_index) = self
-            .secondary_actions
-            .iter()
-            .position(|action| action.clone() == class.get_secondary_action())
-        {
-            self.secondary_actions.remove(secondary_index);
-        }
-        if let Some(special_index) = self
-            .game_state
-            .get_special_actions()
-            .iter()
-            .position(|action| action.clone() == class.get_special_action())
-        {
-            self.game_state.remove_special_action(special_index);
-        }
-        if let Some(class_index) = self
-            .character_classes
-            .iter()
-            .position(|stored_class| stored_class == class)
-        {
-            self.character_classes.remove(class_index);
-        }
-        if let Some(campaign) = self
-            .current_save
-            .as_mut()
-            .map(|(_, save)| save.get_character_mut())
-        {
-            campaign.remove_class(class.get_name());
-        }
-    }
-
-    fn refresh_special(&mut self, special_name: &str) {
-        self.game_state.refresh_special(special_name);
     }
 
     fn open_save_as_dialog(&mut self) {
@@ -764,24 +360,74 @@ impl GuiGreedApp {
             );
         });
         if let Ok(new_save) = new_save {
-            let current_save_saved = if let Some((path, save)) = &mut self.current_save {
-                save.to_file(path.clone())
-                    .map_err(|err| {
-                        error_log_and_notify(
-                            &mut self.toasts,
-                            format!(
-                                "Unable to save current save to {}: {err}",
-                                path.to_string_lossy()
-                            ),
-                        );
-                    })
-                    .is_ok()
+            let current_save_saved = if let Some(campaign_gui) = &mut self.campaign_gui {
+                campaign_gui.save().map_or_else(
+                    || true,
+                    |result| {
+                        result
+                            .map_err(|err| {
+                                error_log_and_notify(
+                                    &mut self.toasts,
+                                    format!("Unable to save current save: {err}",),
+                                );
+                            })
+                            .is_ok()
+                    },
+                )
             } else {
                 true
             };
             if current_save_saved {
-                self.current_save = Some((new_save_path.clone(), new_save));
-                self.refresh_campaign();
+                self.campaign_gui = Some(CampaignGui::new_refreshable(
+                    SaveWithPath::new_with_path(new_save, new_save_path.clone()),
+                    self.class_cache_rc.clone(),
+                ));
+                self.campaign_gui
+                    .as_mut()
+                    .map(CampaignGui::refresh_campaign);
+            }
+        }
+    }
+
+    fn display_dialog_boxes(&mut self, ctx: &egui::Context) {
+        if let Some(dialog) = &mut self.file_dialog {
+            if dialog.show(ctx).selected() {
+                if let Some(file) = dialog.path() {
+                    match dialog.dialog_type() {
+                        egui_file::DialogType::OpenFile => {
+                            self.app_state.add_new_path_to_history(file.clone());
+                            self.open_new_save(&file.as_os_str().to_owned());
+                        }
+                        egui_file::DialogType::SaveFile => {
+                            if let Some(campaign_gui) = &mut self.campaign_gui {
+                                match campaign_gui.save_to(file.clone()) {
+                                    Ok(()) => {
+                                        info!(
+                                            "Successfully saved file to {}",
+                                            file.to_string_lossy()
+                                        );
+
+                                        if let Some(path) = campaign_gui.set_path(file) {
+                                            self.app_state.add_new_path_to_history(path);
+                                        }
+                                    }
+                                    Err(err) => {
+                                        error_log_and_notify(
+                                            &mut self.toasts,
+                                            format!("Error while saving to file {file:?}: {err}"),
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        egui_file::DialogType::SelectFolder => {
+                            error_log_and_notify(
+                                &mut self.toasts,
+                                "Unreachable File dialog reached, need to handle!",
+                            );
+                        }
+                    }
+                }
             }
         }
     }
@@ -794,6 +440,8 @@ impl eframe::App for GuiGreedApp {
         self.toasts.show(ctx);
 
         self.menu_panel(ctx, frame);
+
+        self.display_dialog_boxes(ctx);
 
         self.main_panel(ctx);
 
@@ -809,15 +457,19 @@ impl eframe::App for GuiGreedApp {
 
                         if ui.button("Save").clicked() {
                             self.allowed_to_quit = true;
-                            if let Some((save_path, save)) = &self.current_save {
-                                let save_result = save.to_file(save_path).map_err(|err| {
-                                    error_log_and_notify(
-                                        &mut self.toasts,
-                                        format!("Error when saving file: {err}"),
-                                    );
-                                });
-                                if save_result.is_ok() {
-                                    frame.close();
+                            if let Some(campaign_gui) = &self.campaign_gui {
+                                if let Some(result) = campaign_gui.save() {
+                                    match result {
+                                        Err(err) => {
+                                            error_log_and_notify(
+                                                &mut self.toasts,
+                                                format!("Error when saving file: {err}"),
+                                            );
+                                        }
+                                        Ok(_) => {
+                                            frame.close();
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -835,7 +487,7 @@ impl eframe::App for GuiGreedApp {
         info!("Saving! AppState: {:?}", self.app_state);
         eframe::set_value(storage, eframe::APP_KEY, &self.app_state);
         if eframe::get_value::<ClassCache>(storage, "class_cache").is_none() {
-            eframe::set_value(storage, "class_cache", &self.class_cache);
+            eframe::set_value(storage, "class_cache", &*self.class_cache_rc.borrow());
         }
     }
 
@@ -844,15 +496,17 @@ impl eframe::App for GuiGreedApp {
     }
 
     fn on_close_event(&mut self) -> bool {
-        if let Some((save_path, save)) = &self.current_save {
-            if let Ok(old_save) = Save::from_file(save_path) {
-                if old_save != save.clone() {
+        if let Some(campaign_gui) = &self.campaign_gui {
+            if let Some(path) = campaign_gui.get_path() {
+                if let Ok(old_save) = Save::from_file(path) {
+                    if old_save != *campaign_gui.get_save() {
+                        self.show_save_on_quit_dialog = true;
+                        return self.allowed_to_quit;
+                    }
+                } else {
                     self.show_save_on_quit_dialog = true;
                     return self.allowed_to_quit;
                 }
-            } else {
-                self.show_save_on_quit_dialog = true;
-                return self.allowed_to_quit;
             }
         }
 
