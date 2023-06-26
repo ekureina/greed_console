@@ -63,8 +63,7 @@ pub struct GuiGreedApp {
     app_state: AppState,
     new_campaign_name_entry: String,
     current_save: Option<(OsString, Save)>,
-    open_file_dialog: Option<FileDialog>,
-    save_file_dialog: Option<FileDialog>,
+    file_dialog: Option<FileDialog>,
     utilities: Vec<ClassUtility>,
     show_utilities: bool,
     passives: Vec<ClassPassive>,
@@ -136,8 +135,7 @@ impl GuiGreedApp {
                 app_state,
                 new_campaign_name_entry: String::new(),
                 current_save: Some((load_path.unwrap().into(), save)),
-                open_file_dialog: None,
-                save_file_dialog: None,
+                file_dialog: None,
                 utilities,
                 show_utilities: true,
                 passives,
@@ -158,8 +156,7 @@ impl GuiGreedApp {
                 app_state,
                 new_campaign_name_entry: String::new(),
                 current_save: None,
-                open_file_dialog: None,
-                save_file_dialog: None,
+                file_dialog: None,
                 utilities: vec![],
                 show_utilities: true,
                 passives: vec![],
@@ -194,29 +191,31 @@ impl GuiGreedApp {
                     self.campaign_menu(ui);
                 });
 
-                if let Some(dialog) = &mut self.open_file_dialog {
+                if let Some(dialog) = &mut self.file_dialog {
                     if dialog.show(ctx).selected() {
                         if let Some(file) = dialog.path() {
-                            self.app_state.add_new_path_to_history(file.clone());
-                            self.open_new_save(&file.as_os_str().to_owned());
-                        }
-                    }
-                }
-
-                if let Some(dialog) = &mut self.save_file_dialog {
-                    if dialog.show(ctx).selected() {
-                        if let Some(file) = dialog.path() {
-                            if let Some((path, save)) = &mut self.current_save {
-                                match save.to_file(file.clone()) {
-                                    Ok(()) => {
-                                        info!("Successfully saved file to {:?}", file);
-                                        *path = file.into_os_string();
-                                        self.app_state.add_new_path_to_history(path.clone());
+                            match dialog.dialog_type() {
+                                egui_file::DialogType::OpenFile => {
+                                    self.app_state.add_new_path_to_history(file.clone());
+                                    self.open_new_save(&file.as_os_str().to_owned());
+                                },
+                                egui_file::DialogType::SaveFile => {
+                                    if let Some((path, save)) = &mut self.current_save {
+                                        match save.to_file(file.clone()) {
+                                            Ok(()) => {
+                                                info!("Successfully saved file to {:?}", file);
+                                                *path = file.into_os_string();
+                                                self.app_state.add_new_path_to_history(path.clone());
+                                            }
+                                            Err(err) => {
+                                                error_log_and_notify(&mut self.toasts, format!("Error while saving to file {file:?}: {err}"));
+                                            },
+                                        }
                                     }
-                                    Err(err) => {
-                                        error_log_and_notify(&mut self.toasts, format!("Error while saving to file {file:?}: {err}"));
-                                    },
                                 }
+                                egui_file::DialogType::SelectFolder => {
+                                    error_log_and_notify(&mut self.toasts, "Unreachable File dialog reached, need to handle!");
+                                },
                             }
                         }
                     }
@@ -737,7 +736,7 @@ impl GuiGreedApp {
                 .map(PathBuf::from),
         );
         dialog.open();
-        self.save_file_dialog = Some(dialog);
+        self.file_dialog = Some(dialog);
     }
 
     fn open_open_dialog(&mut self) {
@@ -747,7 +746,7 @@ impl GuiGreedApp {
                 .map(PathBuf::from),
         );
         dialog.open();
-        self.open_file_dialog = Some(dialog);
+        self.file_dialog = Some(dialog);
     }
 
     fn open_new_save(&mut self, new_save_path: &OsString) {
