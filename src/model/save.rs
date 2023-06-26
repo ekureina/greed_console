@@ -33,6 +33,10 @@ pub struct Save {
     round_number: u8,
     character: Character,
     used_specials: HashSet<String>,
+    #[serde(default)]
+    battle_power: i8,
+    #[serde(default)]
+    battle_defense: i8,
 }
 
 impl Save {
@@ -78,6 +82,7 @@ impl Save {
         if self.battle_number == Wrapping(0) {
             self.battle_number = Wrapping(1);
         }
+        self.battle_power = 0;
     }
 
     pub fn get_round(&self) -> u8 {
@@ -86,6 +91,22 @@ impl Save {
 
     pub fn set_round(&mut self, round: u8) {
         self.round_number = round;
+    }
+
+    pub fn get_battle_power(&self) -> i8 {
+        self.battle_power
+    }
+
+    pub fn set_battle_power(&mut self, power: i8) {
+        self.battle_power = power;
+    }
+
+    pub fn get_battle_defense(&self) -> i8 {
+        self.battle_defense
+    }
+
+    pub fn set_battle_defense(&mut self, defense: i8) {
+        self.battle_defense = defense;
     }
 
     pub fn use_special<N: Into<String>>(&mut self, name: N) {
@@ -113,6 +134,8 @@ impl Default for Save {
             round_number: 1,
             character: Character::default(),
             used_specials: HashSet::default(),
+            battle_power: 0,
+            battle_defense: 0,
         }
     }
 }

@@ -248,6 +248,10 @@ impl GameState {
         self.power.current_value()
     }
 
+    pub fn get_battle_power(&self) -> i8 {
+        self.power.battle_mod
+    }
+
     pub fn change_power_for_turn(&mut self, delta: i8) {
         self.power.modify_turn(delta);
     }
@@ -262,6 +266,10 @@ impl GameState {
 
     pub fn get_defense(&self) -> i8 {
         self.defense.current_value()
+    }
+
+    pub fn get_battle_defense(&self) -> i8 {
+        self.defense.battle_mod
     }
 
     pub fn change_defense_for_turn(&mut self, delta: i8) {

@@ -118,6 +118,12 @@ impl CampaignGui {
                 }
             });
         });
+        self.current_save
+            .get_save_mut()
+            .set_battle_power(self.game_state.get_battle_power());
+        self.current_save
+            .get_save_mut()
+            .set_battle_defense(self.game_state.get_battle_defense());
     }
 
     fn campaign_menu(&mut self, ui: &mut egui::Ui) {
@@ -303,6 +309,10 @@ impl CampaignGui {
             class_cache.map_to_concrete_classes(current_campaign.get_classes());
         self.game_state
             .set_round(self.current_save.get_save().get_round());
+        self.game_state
+            .change_power_for_battle(self.current_save.get_save().get_battle_power());
+        self.game_state
+            .change_defense_for_battle(self.current_save.get_save().get_battle_defense());
     }
 
     fn change_origin(&mut self, new_origin: Option<Class>) {
