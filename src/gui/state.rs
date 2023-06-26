@@ -41,7 +41,7 @@ impl AppState {
 
     pub fn use_path_more_recently(&mut self, pos: usize) {
         if let Some(path) = self.campaign_path_history.remove(pos) {
-            self.campaign_path_history.push_front(path)
+            self.campaign_path_history.push_front(path);
         }
     }
 

@@ -291,7 +291,7 @@ impl GuiGreedApp {
                     .into_iter()
                     .enumerate()
                 {
-                    if !Path::new(&path).is_file() {
+                    if Save::from_file(path.clone()).is_err() {
                         invalid_paths.push(pos);
                     } else if ui.button(path.clone().to_string_lossy()).clicked() {
                         self.app_state.use_path_more_recently(pos);
