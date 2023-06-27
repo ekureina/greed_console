@@ -23,6 +23,7 @@ thiserror = "1.0.40"
 egui_file = "0.9.0"
 indexmap = { version = "2.0.0", features = ["serde"] }
 egui-notify = "0.7.0"
+egui_dock = "0.6.3"
 
 [build-dependencies]
 nsvg = "0.5.1"

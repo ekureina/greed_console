@@ -1,5 +1,6 @@
 use super::campaign::CampaignGui;
 use super::state::AppState;
+use super::tabs::CampaignTabViewer;
 use crate::google::GetOriginsAndClassesError;
 use crate::gui::util::error_log_and_notify;
 use crate::model::classes::ClassCache;
@@ -9,6 +10,7 @@ use crate::model::save::{Save, SaveWithPath};
 use eframe::egui;
 use eframe::glow::Context;
 use eframe::Storage;
+use egui_dock::{Style, Tree};
 use egui_file::FileDialog;
 use egui_notify::Toasts;
 use log::{error, info};
@@ -322,11 +324,22 @@ impl GuiGreedApp {
     }
 
     fn main_panel(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            if let Some(campaign_gui) = &mut self.campaign_gui {
-                campaign_gui.ui(ui);
-            }
-        });
+        let mut tree = if let Some(campaign_gui) = &mut self.campaign_gui {
+            Tree::new(vec![campaign_gui])
+        } else {
+            Tree::new(vec![])
+        };
+
+        let mut should_remove_gui = false;
+        let mut viewer = CampaignTabViewer {
+            should_remove_gui: &mut should_remove_gui,
+        };
+        egui_dock::DockArea::new(&mut tree)
+            .style(Style::from_egui(ctx.style().as_ref()))
+            .show(ctx, &mut viewer);
+        if should_remove_gui {
+            self.campaign_gui = None;
+        }
     }
 
     fn open_save_as_dialog(&mut self) {
