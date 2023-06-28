@@ -20,7 +20,7 @@ use tokio::task::JoinHandle;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ffi::OsString;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -74,7 +74,7 @@ pub struct GuiGreedApp {
 }
 
 impl GuiGreedApp {
-    pub fn new<'a, P: Into<&'a str>>(
+    pub fn new<P: Into<OsString>>(
         cc: &eframe::CreationContext,
         class_cache: ClassCache,
         campaign_path_to_load: Option<P>,
@@ -94,14 +94,10 @@ impl GuiGreedApp {
             .build()
             .unwrap();
 
-        let load_path = campaign_path_to_load
-            .map(|path| Path::new(path.into()))
-            .filter(|path| path.is_file());
-
         let toasts = Toasts::default();
 
-        let mut campaign_gui = load_path
-            .map(SaveWithPath::from_path)
+        let mut campaign_gui = campaign_path_to_load
+            .map(|path| SaveWithPath::from_path(path.into()))
             .and_then(|result| result.map_err(|err| error!("{err}")).ok())
             .map(|save| CampaignGui::new_refreshable(save, class_cache_rc.clone()));
         if let Some(campaign_gui) = campaign_gui.as_mut() {

@@ -21,17 +21,23 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::cli::Args;
 use crate::gui::main::GuiGreedApp;
 
+use clap::Parser;
 use eframe::NativeOptions;
 use model::classes::ClassCache;
 
+mod cli;
 mod google;
 mod gui;
 mod model;
 
 fn main() {
     env_logger::init();
+
+    let args = Args::parse();
+    let campaign_path_to_load = args.campaigns.first().cloned();
 
     let img_bytes = include_bytes!(concat!(env!("OUT_DIR"), "greed_console_icon")).to_vec();
     let icon_data = eframe::IconData {
@@ -60,7 +66,7 @@ fn main() {
                     .unwrap();
                 rt.block_on(google::get_origins_and_classes()).unwrap()
             };
-            Box::new(GuiGreedApp::new(cc, class_cache, Some("")))
+            Box::new(GuiGreedApp::new(cc, class_cache, campaign_path_to_load))
         }),
     )
     .unwrap();
