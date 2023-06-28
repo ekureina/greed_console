@@ -151,11 +151,12 @@ impl SaveWithPath {
         SaveWithPath { path: None, save }
     }
 
-    pub fn new_with_path<P: Into<OsString>>(save: Save, path: P) -> SaveWithPath {
-        SaveWithPath {
-            path: Some(path.into()),
-            save,
-        }
+    pub fn from_path<P: Into<OsString>>(path: P) -> Result<SaveWithPath, SaveFromFileError> {
+        let os_str_path = path.into();
+        Ok(SaveWithPath {
+            path: Some(os_str_path.clone()),
+            save: Save::from_file(os_str_path)?,
+        })
     }
 
     pub fn save(&self) -> Option<Result<(), SaveToFileError>> {

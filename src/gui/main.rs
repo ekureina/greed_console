@@ -4,7 +4,6 @@ use super::tabs::CampaignTabViewer;
 use crate::google::GetOriginsAndClassesError;
 use crate::gui::util::error_log_and_notify;
 use crate::model::classes::ClassCache;
-use crate::model::game_state::GameState;
 use crate::model::save::{Save, SaveWithPath};
 
 use eframe::egui;
@@ -87,7 +86,6 @@ impl GuiGreedApp {
             AppState::new()
         };
 
-        let mut game_state = GameState::default();
         let class_cache_rc = Rc::new(RefCell::new(class_cache));
 
         let rule_refresh_runtime = tokio::runtime::Builder::new_multi_thread()
@@ -102,74 +100,25 @@ impl GuiGreedApp {
 
         let toasts = Toasts::default();
 
-        if let Some(save) = load_path
-            .map(Save::from_file)
+        let mut campaign_gui = load_path
+            .map(SaveWithPath::from_path)
             .and_then(|result| result.map_err(|err| error!("{err}")).ok())
-        {
-            game_state.set_round(save.get_round());
+            .map(|save| CampaignGui::new_refreshable(save, class_cache_rc.clone()));
+        if let Some(campaign_gui) = campaign_gui.as_mut() {
+            campaign_gui.refresh_campaign();
+        }
 
-            let character = save.get_character();
-
-            let (utilities, passives, primary_actions, secondary_actions, mut special_actions) =
-                character.get_all_actions(&class_cache_rc.borrow());
-            let used_specials = save.get_used_specials();
-            for action in &mut special_actions {
-                if used_specials.contains(&action.get_name()) {
-                    action.use_action();
-                }
-                game_state.push_special(action.clone());
-            }
-
-            let class_cache_for_origin = class_cache_rc.borrow();
-            let character_origin = character
-                .get_origin()
-                .and_then(|origin_name| class_cache_for_origin.get_origin(origin_name.as_str()))
-                .cloned();
-            drop(class_cache_for_origin);
-
-            let character_classes = class_cache_rc
-                .borrow()
-                .map_to_concrete_classes(character.get_classes());
-
-            let save_with_path = SaveWithPath::new_with_path(save, load_path.unwrap());
-
-            let campaign_gui = CampaignGui::new(
-                game_state,
-                save_with_path,
-                utilities,
-                passives,
-                primary_actions,
-                secondary_actions,
-                character_classes,
-                character_origin,
-                class_cache_rc.clone(),
-            );
-
-            GuiGreedApp {
-                campaign_gui: Some(campaign_gui),
-                app_state,
-                new_campaign_name_entry: String::new(),
-                file_dialog: None,
-                class_cache_rc,
-                rule_refresh_runtime,
-                rule_refresh_handle: RefCell::new(None),
-                show_save_on_quit_dialog: false,
-                allowed_to_quit: false,
-                toasts,
-            }
-        } else {
-            GuiGreedApp {
-                campaign_gui: None,
-                app_state,
-                new_campaign_name_entry: String::new(),
-                file_dialog: None,
-                class_cache_rc,
-                rule_refresh_runtime,
-                rule_refresh_handle: RefCell::new(None),
-                show_save_on_quit_dialog: false,
-                allowed_to_quit: false,
-                toasts,
-            }
+        GuiGreedApp {
+            campaign_gui,
+            app_state,
+            new_campaign_name_entry: String::new(),
+            file_dialog: None,
+            class_cache_rc,
+            rule_refresh_runtime,
+            rule_refresh_handle: RefCell::new(None),
+            show_save_on_quit_dialog: false,
+            allowed_to_quit: false,
+            toasts,
         }
     }
 
@@ -363,36 +312,35 @@ impl GuiGreedApp {
     }
 
     fn open_new_save(&mut self, new_save_path: &OsString) {
-        let new_save = Save::from_file(new_save_path.clone()).map_err(|err| {
-            error_log_and_notify(
-                &mut self.toasts,
-                format!(
-                    "Error loading save file at '{}': {err}",
-                    new_save_path.to_string_lossy()
-                ),
-            );
-        });
-        if let Ok(new_save) = new_save {
-            let current_save_saved = if let Some(campaign_gui) = &mut self.campaign_gui {
-                campaign_gui.save().map_or_else(
-                    || true,
-                    |result| {
-                        result
-                            .map_err(|err| {
-                                error_log_and_notify(
-                                    &mut self.toasts,
-                                    format!("Unable to save current save: {err}",),
-                                );
-                            })
-                            .is_ok()
-                    },
-                )
-            } else {
-                true
-            };
-            if current_save_saved {
+        let current_save_saved = if let Some(campaign_gui) = &mut self.campaign_gui {
+            campaign_gui.save().map_or_else(
+                || true,
+                |result| {
+                    result
+                        .map_err(|err| {
+                            error_log_and_notify(
+                                &mut self.toasts,
+                                format!("Unable to save current save: {err}",),
+                            );
+                        })
+                        .is_ok()
+                },
+            )
+        } else {
+            true
+        };
+        if current_save_saved {
+            if let Ok(new_save) = SaveWithPath::from_path(new_save_path).map_err(|err| {
+                error_log_and_notify(
+                    &mut self.toasts,
+                    format!(
+                        "Error loading save file at '{}': {err}",
+                        new_save_path.to_string_lossy()
+                    ),
+                );
+            }) {
                 self.campaign_gui = Some(CampaignGui::new_refreshable(
-                    SaveWithPath::new_with_path(new_save, new_save_path.clone()),
+                    new_save,
                     self.class_cache_rc.clone(),
                 ));
                 self.campaign_gui

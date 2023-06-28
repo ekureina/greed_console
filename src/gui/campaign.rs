@@ -22,31 +22,6 @@ pub struct CampaignGui {
 }
 
 impl CampaignGui {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        game_state: GameState,
-        current_save: SaveWithPath,
-        utilities: Vec<ClassUtility>,
-        passives: Vec<ClassPassive>,
-        primary_actions: Vec<PrimaryAction>,
-        secondary_actions: Vec<SecondaryAction>,
-        character_classes: Vec<Class>,
-        character_origin: Option<Class>,
-        class_cache: Rc<RefCell<ClassCache>>,
-    ) -> CampaignGui {
-        CampaignGui {
-            game_state,
-            current_save,
-            utilities,
-            passives,
-            primary_actions,
-            secondary_actions,
-            character_classes,
-            character_origin,
-            class_cache,
-        }
-    }
-
     pub fn new_refreshable(
         current_save: SaveWithPath,
         class_cache: Rc<RefCell<ClassCache>>,
