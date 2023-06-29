@@ -12,7 +12,7 @@ use eframe::Storage;
 use egui_dock::{Style, Tree};
 use egui_file::FileDialog;
 use egui_notify::Toasts;
-use log::{error, info};
+use log::info;
 use tokio::join;
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
@@ -94,12 +94,16 @@ impl GuiGreedApp {
             .build()
             .unwrap();
 
-        let toasts = Toasts::default();
+        let mut toasts = Toasts::default();
 
         let mut campaign_gui = campaigns
             .first()
             .map(SaveWithPath::from_path)
-            .and_then(|result| result.map_err(|err| error!("{err}")).ok())
+            .and_then(|result| {
+                result
+                    .map_err(|err| error_log_and_notify(&mut toasts, format!("{err}")))
+                    .ok()
+            })
             .map(|save| CampaignGui::new_refreshable(save, class_cache_rc.clone()));
         if let Some(campaign_gui) = campaign_gui.as_mut() {
             campaign_gui.refresh_campaign();
