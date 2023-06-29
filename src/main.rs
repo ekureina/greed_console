@@ -37,7 +37,6 @@ fn main() {
     env_logger::init();
 
     let args = Args::parse();
-    let campaign_path_to_load = args.campaigns.first().cloned();
 
     let img_bytes = include_bytes!(concat!(env!("OUT_DIR"), "greed_console_icon")).to_vec();
     let icon_data = eframe::IconData {
@@ -54,7 +53,7 @@ fn main() {
     eframe::run_native(
         "Greed Console",
         native_options,
-        Box::new(|cc| {
+        Box::new(move |cc| {
             let class_cache = if let Some(cache) =
                 eframe::get_value::<ClassCache>(cc.storage.unwrap(), "class_cache")
             {
@@ -66,7 +65,7 @@ fn main() {
                     .unwrap();
                 rt.block_on(google::get_origins_and_classes()).unwrap()
             };
-            Box::new(GuiGreedApp::new(cc, class_cache, campaign_path_to_load))
+            Box::new(GuiGreedApp::new(cc, class_cache, &args.campaigns))
         }),
     )
     .unwrap();

@@ -74,10 +74,10 @@ pub struct GuiGreedApp {
 }
 
 impl GuiGreedApp {
-    pub fn new<P: Into<OsString>>(
+    pub fn new(
         cc: &eframe::CreationContext,
         class_cache: ClassCache,
-        campaign_path_to_load: Option<P>,
+        campaigns: &[OsString],
     ) -> GuiGreedApp {
         info!("Starting up app!");
         let app_state = if let Some(storage) = cc.storage {
@@ -96,8 +96,9 @@ impl GuiGreedApp {
 
         let toasts = Toasts::default();
 
-        let mut campaign_gui = campaign_path_to_load
-            .map(|path| SaveWithPath::from_path(path.into()))
+        let mut campaign_gui = campaigns
+            .first()
+            .map(SaveWithPath::from_path)
             .and_then(|result| result.map_err(|err| error!("{err}")).ok())
             .map(|save| CampaignGui::new_refreshable(save, class_cache_rc.clone()));
         if let Some(campaign_gui) = campaign_gui.as_mut() {
