@@ -1,3 +1,4 @@
+use log::error;
 use ron::{from_str, to_string};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -183,5 +184,22 @@ impl SaveWithPath {
 
     pub fn get_save_mut(&mut self) -> &mut Save {
         &mut self.save
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        if self.path.is_none() {
+            return true;
+        }
+
+        match Save::from_file(self.path.as_ref().unwrap()) {
+            Ok(old_save) => old_save != self.save,
+            Err(err) => {
+                error!(
+                    "Unable to get save at {}: {err}",
+                    self.path.as_ref().unwrap().to_string_lossy()
+                );
+                true
+            }
+        }
     }
 }

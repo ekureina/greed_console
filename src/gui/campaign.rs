@@ -438,4 +438,8 @@ impl CampaignGui {
     pub fn get_path(&self) -> &Option<OsString> {
         self.current_save.get_path()
     }
+
+    pub fn save_is_dirty(&self) -> bool {
+        self.current_save.is_dirty()
+    }
 }

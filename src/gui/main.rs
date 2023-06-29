@@ -488,14 +488,7 @@ impl eframe::App for GuiGreedApp {
 
     fn on_close_event(&mut self) -> bool {
         for campaign_gui in self.tree.tabs() {
-            if let Some(path) = campaign_gui.get_path() {
-                if let Ok(old_save) = Save::from_file(path) {
-                    if &old_save != campaign_gui.get_save() {
-                        self.show_save_on_quit_dialog = true;
-                        return self.allowed_to_quit;
-                    }
-                }
-            } else {
+            if campaign_gui.save_is_dirty() {
                 self.show_save_on_quit_dialog = true;
                 return self.allowed_to_quit;
             }
