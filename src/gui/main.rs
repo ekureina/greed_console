@@ -461,6 +461,7 @@ impl eframe::App for GuiGreedApp {
                             if self.allowed_to_quit {
                                 frame.close();
                             } else {
+                                self.open_save_as_dialog();
                                 self.show_save_on_quit_dialog = false;
                             }
                         }
