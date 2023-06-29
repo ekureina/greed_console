@@ -97,21 +97,22 @@ impl GuiGreedApp {
 
         let mut toasts = Toasts::default();
 
-        let mut campaign_gui = campaigns
-            .first()
+        let mut campaign_guis: Vec<CampaignGui> = campaigns
+            .iter()
             .map(SaveWithPath::from_path)
-            .and_then(|result| {
+            .filter_map(|result| {
                 result
                     .map_err(|err| error_log_and_notify(&mut toasts, format!("{err}")))
                     .ok()
             })
-            .map(|save| CampaignGui::new_refreshable(save, class_cache_rc.clone()));
+            .map(|save| CampaignGui::new_refreshable(save, class_cache_rc.clone()))
+            .collect();
 
-        if let Some(campaign_gui) = campaign_gui.as_mut() {
-            campaign_gui.refresh_campaign();
-        }
+        campaign_guis
+            .iter_mut()
+            .for_each(CampaignGui::refresh_campaign);
 
-        let tree = Tree::new(campaign_gui.into_iter().collect());
+        let tree = Tree::new(campaign_guis);
 
         GuiGreedApp {
             tree,
