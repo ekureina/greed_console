@@ -116,7 +116,7 @@ impl GuiGreedApp {
 
         GuiGreedApp {
             tree,
-            tab_viewer: CampaignTabViewer {},
+            tab_viewer: CampaignTabViewer::new(),
             app_state,
             new_campaign_name_entry: String::new(),
             file_dialog: None,
@@ -397,7 +397,7 @@ impl eframe::App for GuiGreedApp {
         self.main_panel(ctx);
 
         if self.show_save_on_quit_dialog {
-            egui::Window::new("Save Campaign?")
+            egui::Window::new("Save Campaigns?")
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
@@ -408,7 +408,8 @@ impl eframe::App for GuiGreedApp {
 
                         if ui.button("Save").clicked() {
                             self.allowed_to_quit = true;
-                            if let Some((_, campaign_gui)) = self.tree.find_active() {
+                            let mut tabs_to_close = vec![];
+                            for campaign_gui in &mut self.tree.tabs() {
                                 if let Some(result) = campaign_gui.save() {
                                     match result {
                                         Err(err) => {
@@ -416,12 +417,31 @@ impl eframe::App for GuiGreedApp {
                                                 &mut self.toasts,
                                                 format!("Error when saving file: {err}"),
                                             );
+                                            self.allowed_to_quit = false;
                                         }
                                         Ok(_) => {
-                                            frame.close();
+                                            tabs_to_close
+                                                .push(campaign_gui.get_save().get_campaign_name());
                                         }
                                     }
+                                } else {
+                                    self.allowed_to_quit = false;
+                                    error_log_and_notify(
+                                        &mut self.toasts,
+                                        format!(
+                                            "No Save file for campaign: {}",
+                                            campaign_gui.get_save().get_campaign_name()
+                                        ),
+                                    );
                                 }
+                            }
+
+                            self.tab_viewer.set_tabs_to_close(tabs_to_close);
+
+                            if self.allowed_to_quit {
+                                frame.close();
+                            } else {
+                                self.show_save_on_quit_dialog = false;
                             }
                         }
 
@@ -447,17 +467,17 @@ impl eframe::App for GuiGreedApp {
     }
 
     fn on_close_event(&mut self) -> bool {
-        if let Some((_, campaign_gui)) = self.tree.find_active() {
+        for campaign_gui in self.tree.tabs() {
             if let Some(path) = campaign_gui.get_path() {
                 if let Ok(old_save) = Save::from_file(path) {
-                    if old_save != *campaign_gui.get_save() {
+                    if &old_save != campaign_gui.get_save() {
                         self.show_save_on_quit_dialog = true;
                         return self.allowed_to_quit;
                     }
-                } else {
-                    self.show_save_on_quit_dialog = true;
-                    return self.allowed_to_quit;
                 }
+            } else {
+                self.show_save_on_quit_dialog = true;
+                return self.allowed_to_quit;
             }
         }
 
