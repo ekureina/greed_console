@@ -146,6 +146,14 @@ impl GuiGreedApp {
                     self.campaign_menu(ui);
                 });
 
+                if ui.button("Next Battle").clicked() {
+                    self.perform_on_all_guis_mut(&CampaignGui::next_battle);
+                }
+
+                if ui.button("Next Turn").clicked() {
+                    self.perform_on_all_guis_mut(&CampaignGui::next_turn);
+                }
+
                 self.refresh_rules(ui, frame);
 
                 ui.hyperlink_to("Greed Rulset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
@@ -382,6 +390,18 @@ impl GuiGreedApp {
             }
         }
     }
+
+    fn perform_on_all_guis_mut<T>(&mut self, gui_action: &dyn Fn(&mut CampaignGui) -> T) -> Vec<T> {
+        let mut results = Vec::with_capacity(self.tree.num_tabs());
+        for node in self.tree.iter_mut() {
+            if let egui_dock::node::Node::Leaf { tabs, .. } = node {
+                for gui in tabs.iter_mut() {
+                    results.push(gui_action(gui));
+                }
+            }
+        }
+        results
+    }
 }
 
 impl eframe::App for GuiGreedApp {
@@ -409,7 +429,7 @@ impl eframe::App for GuiGreedApp {
                         if ui.button("Save").clicked() {
                             self.allowed_to_quit = true;
                             let mut tabs_to_close = vec![];
-                            for campaign_gui in &mut self.tree.tabs() {
+                            for campaign_gui in self.tree.tabs() {
                                 if let Some(result) = campaign_gui.save() {
                                     match result {
                                         Err(err) => {

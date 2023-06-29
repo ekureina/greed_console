@@ -298,17 +298,25 @@ impl CampaignGui {
 
     fn next_part_buttons(&mut self, ui: &mut egui::Ui) {
         if ui.button("Next Battle").clicked() {
-            self.game_state.next_battle();
-            self.current_save.get_save_mut().refresh_specials();
-            self.current_save.get_save_mut().inc_battle();
+            self.next_battle();
         }
 
         if ui.button("Next Turn").clicked() {
-            self.game_state.next_turn();
-            self.current_save
-                .get_save_mut()
-                .set_round(self.game_state.get_round_num());
+            self.next_turn();
         }
+    }
+
+    pub fn next_battle(&mut self) {
+        self.game_state.next_battle();
+        self.current_save.get_save_mut().refresh_specials();
+        self.current_save.get_save_mut().inc_battle();
+    }
+
+    pub fn next_turn(&mut self) {
+        self.game_state.next_turn();
+        self.current_save
+            .get_save_mut()
+            .set_round(self.game_state.get_round_num());
     }
 
     fn classes_menu(&mut self, ui: &mut egui::Ui) {
