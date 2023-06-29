@@ -23,15 +23,17 @@ impl egui_dock::TabViewer for CampaignTabViewer {
     }
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
+        let dirty_mark = if tab.save_is_dirty() { "* " } else { "" };
+
         match tab.get_path() {
             Some(text) => {
                 format!(
-                    "{} [{}]",
+                    "{dirty_mark}{} [{}]",
                     tab.get_save().get_campaign_name(),
                     text.to_string_lossy()
                 )
             }
-            None => tab.get_save().get_campaign_name(),
+            None => format!("{dirty_mark}{}", tab.get_save().get_campaign_name()),
         }
         .into()
     }
