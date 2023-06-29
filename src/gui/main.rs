@@ -61,7 +61,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ";
 
 pub struct GuiGreedApp {
-    campaign_gui: Option<CampaignGui>,
+    tree: Tree<CampaignGui>,
+    tab_viewer: CampaignTabViewer,
     app_state: AppState,
     new_campaign_name_entry: String,
     file_dialog: Option<FileDialog>,
@@ -105,12 +106,16 @@ impl GuiGreedApp {
                     .ok()
             })
             .map(|save| CampaignGui::new_refreshable(save, class_cache_rc.clone()));
+
         if let Some(campaign_gui) = campaign_gui.as_mut() {
             campaign_gui.refresh_campaign();
         }
 
+        let tree = Tree::new(campaign_gui.into_iter().collect());
+
         GuiGreedApp {
-            campaign_gui,
+            tree,
+            tab_viewer: CampaignTabViewer {},
             app_state,
             new_campaign_name_entry: String::new(),
             file_dialog: None,
@@ -152,14 +157,13 @@ impl GuiGreedApp {
         ui.menu_button("New", |ui| {
             ui.text_edit_singleline(&mut self.new_campaign_name_entry);
             if ui.button("Create").clicked() {
-                self.campaign_gui = Some(CampaignGui::new_refreshable(
+                let mut campaign_gui = CampaignGui::new_refreshable(
                     SaveWithPath::new(Save::new(self.new_campaign_name_entry.clone())),
                     Rc::new(RefCell::new(ClassCache::new(vec![], vec![]))),
-                ));
+                );
+                campaign_gui.refresh_campaign();
                 self.new_campaign_name_entry.clear();
-                self.campaign_gui
-                    .as_mut()
-                    .map(CampaignGui::refresh_campaign);
+                self.tree.push_to_first_leaf(campaign_gui);
             }
         });
         if ui.button("Open").clicked() {
@@ -194,31 +198,31 @@ impl GuiGreedApp {
             });
         }
 
-        if self.campaign_gui.is_some() && ui.button("Save").clicked() {
-            info!("Attempting to save campaign!");
-            let open_file_picker = if self.campaign_gui.as_ref().unwrap().get_path().is_some() {
-                self.campaign_gui
-                    .as_ref()
-                    .unwrap()
-                    .save()
-                    .unwrap()
-                    .map_err(|err| {
-                        error_log_and_notify(
-                            &mut self.toasts,
-                            format!("Failed to save campaign: {err}",),
-                        );
-                    })
-                    .is_err()
-            } else {
-                true
-            };
+        if let Some((_, campaign_gui)) = self.tree.find_active() {
+            if ui.button("Save").clicked() {
+                info!("Attempting to save campaign!");
+                let open_file_picker = if campaign_gui.get_path().is_some() {
+                    campaign_gui
+                        .save()
+                        .unwrap()
+                        .map_err(|err| {
+                            error_log_and_notify(
+                                &mut self.toasts,
+                                format!("Failed to save campaign: {err}",),
+                            );
+                        })
+                        .is_err()
+                } else {
+                    true
+                };
 
-            if open_file_picker {
-                self.open_save_as_dialog();
+                if open_file_picker {
+                    self.open_save_as_dialog();
+                }
             }
         }
 
-        if self.campaign_gui.is_some() && ui.button("Save As...").clicked() {
+        if self.tree.find_active().is_some() && ui.button("Save As...").clicked() {
             self.open_save_as_dialog();
         }
     }
@@ -258,9 +262,9 @@ impl GuiGreedApp {
                             );
                         }
                         info!("Campaign updated to new rules.");
-                        self.campaign_gui
-                            .as_mut()
-                            .map(CampaignGui::refresh_campaign);
+                        if let Some((_, campaign_gui)) = self.tree.find_active() {
+                            campaign_gui.refresh_campaign();
+                        }
                     }
                     Err(err) => {
                         error_log_and_notify(
@@ -274,22 +278,9 @@ impl GuiGreedApp {
     }
 
     fn main_panel(&mut self, ctx: &egui::Context) {
-        let mut tree = if let Some(campaign_gui) = &mut self.campaign_gui {
-            Tree::new(vec![campaign_gui])
-        } else {
-            Tree::new(vec![])
-        };
-
-        let mut should_remove_gui = false;
-        let mut viewer = CampaignTabViewer {
-            should_remove_gui: &mut should_remove_gui,
-        };
-        egui_dock::DockArea::new(&mut tree)
+        egui_dock::DockArea::new(&mut self.tree)
             .style(Style::from_egui(ctx.style().as_ref()))
-            .show(ctx, &mut viewer);
-        if should_remove_gui {
-            self.campaign_gui = None;
-        }
+            .show(ctx, &mut self.tab_viewer);
     }
 
     fn open_save_as_dialog(&mut self) {
@@ -313,7 +304,7 @@ impl GuiGreedApp {
     }
 
     fn open_new_save(&mut self, new_save_path: &OsString) {
-        let current_save_saved = if let Some(campaign_gui) = &mut self.campaign_gui {
+        let current_save_saved = if let Some((_, campaign_gui)) = self.tree.find_active() {
             campaign_gui.save().map_or_else(
                 || true,
                 |result| {
@@ -340,13 +331,10 @@ impl GuiGreedApp {
                     ),
                 );
             }) {
-                self.campaign_gui = Some(CampaignGui::new_refreshable(
-                    new_save,
-                    self.class_cache_rc.clone(),
-                ));
-                self.campaign_gui
-                    .as_mut()
-                    .map(CampaignGui::refresh_campaign);
+                let mut campaign_gui =
+                    CampaignGui::new_refreshable(new_save, self.class_cache_rc.clone());
+                campaign_gui.refresh_campaign();
+                self.tree.push_to_first_leaf(campaign_gui);
             }
         }
     }
@@ -361,7 +349,7 @@ impl GuiGreedApp {
                             self.open_new_save(&file.as_os_str().to_owned());
                         }
                         egui_file::DialogType::SaveFile => {
-                            if let Some(campaign_gui) = &mut self.campaign_gui {
+                            if let Some((_, campaign_gui)) = &mut self.tree.find_active() {
                                 match campaign_gui.save_to(file.clone()) {
                                     Ok(()) => {
                                         info!(
@@ -419,7 +407,7 @@ impl eframe::App for GuiGreedApp {
 
                         if ui.button("Save").clicked() {
                             self.allowed_to_quit = true;
-                            if let Some(campaign_gui) = &self.campaign_gui {
+                            if let Some((_, campaign_gui)) = self.tree.find_active() {
                                 if let Some(result) = campaign_gui.save() {
                                     match result {
                                         Err(err) => {
@@ -458,7 +446,7 @@ impl eframe::App for GuiGreedApp {
     }
 
     fn on_close_event(&mut self) -> bool {
-        if let Some(campaign_gui) = &self.campaign_gui {
+        if let Some((_, campaign_gui)) = self.tree.find_active() {
             if let Some(path) = campaign_gui.get_path() {
                 if let Ok(old_save) = Save::from_file(path) {
                     if old_save != *campaign_gui.get_save() {

@@ -1,11 +1,9 @@
 use super::campaign::CampaignGui;
 
-pub struct CampaignTabViewer<'a> {
-    pub should_remove_gui: &'a mut bool,
-}
+pub struct CampaignTabViewer {}
 
-impl<'a> egui_dock::TabViewer for CampaignTabViewer<'a> {
-    type Tab = &'a mut CampaignGui;
+impl egui_dock::TabViewer for CampaignTabViewer {
+    type Tab = CampaignGui;
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
         tab.ui(ui);
@@ -26,7 +24,6 @@ impl<'a> egui_dock::TabViewer for CampaignTabViewer<'a> {
     }
 
     fn on_close(&mut self, tab: &mut Self::Tab) -> bool {
-        *self.should_remove_gui = tab.save().is_some_and(|result| result.is_ok());
-        *self.should_remove_gui
+        tab.save().is_some_and(|result| result.is_ok())
     }
 }
