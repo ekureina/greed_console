@@ -439,6 +439,20 @@ impl CampaignGui {
             .get_save_mut()
             .get_character_mut()
             .remove_class(class.get_name());
+
+        let mut subclasses = vec![];
+        for remaining_class in &self.character_classes {
+            if remaining_class
+                .get_class_requirements()
+                .contains(&class.get_name())
+            {
+                subclasses.push(remaining_class.clone());
+            }
+        }
+
+        for subclass in &subclasses {
+            self.remove_class(subclass);
+        }
     }
 
     pub fn get_save(&self) -> &Save {

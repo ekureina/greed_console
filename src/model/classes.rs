@@ -128,6 +128,10 @@ impl Class {
             .iter()
             .all(|class_requirement| current_class_names.contains(class_requirement))
     }
+
+    pub fn get_class_requirements(&self) -> &Vec<String> {
+        &self.class_requirements
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
