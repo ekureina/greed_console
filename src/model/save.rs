@@ -114,10 +114,6 @@ impl Save {
         self.used_specials.insert(name.into());
     }
 
-    pub fn refresh_special<N: Into<String>>(&mut self, name: N) {
-        self.used_specials.remove(&name.into());
-    }
-
     pub fn refresh_specials(&mut self) {
         self.used_specials.clear();
     }

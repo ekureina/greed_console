@@ -128,29 +128,6 @@ impl GameState {
     }
 
     /**
-     * Refresh a specific Special Move
-     */
-    pub fn refresh_special<'a, S: Into<&'a str>>(&mut self, name: S) {
-        let name_ref = name.into();
-        for action in &mut self.special_actions.iter_mut() {
-            if action.is_named(name_ref) {
-                action.refresh();
-                info!("Refreshed Action {}", name_ref);
-                break;
-            }
-        }
-    }
-
-    /**
-     * Exhaust all specials in this game
-     */
-    pub fn exhaust_specials(&mut self) {
-        for action in &mut self.special_actions.iter_mut() {
-            action.use_action();
-        }
-    }
-
-    /**
      * Set GameState such that inspiration was used
      */
     pub fn use_inspiration(&mut self) {

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, ffi::OsString, path::Path, rc::Rc};
 
 use crate::model::{
-    actions::{PrimaryAction, SecondaryAction, SpecialAction},
+    actions::{PrimaryAction, SecondaryAction},
     classes::{Class, ClassCache, ClassPassive, ClassUtility},
     game_state::GameState,
     save::{Save, SaveToFileError, SaveWithPath},
@@ -121,24 +121,6 @@ impl CampaignGui {
                     if ui.button("Refresh Secondary Action").clicked() {
                         self.game_state.extra_secondary();
                     }
-
-                    if self
-                        .game_state
-                        .get_special_actions()
-                        .iter()
-                        .any(SpecialAction::is_usable)
-                        && ui.button("Exhaust All Specials").clicked()
-                    {
-                        self.game_state.exhaust_specials();
-                        self.game_state
-                            .get_special_actions()
-                            .iter()
-                            .for_each(|action| {
-                                self.current_save
-                                    .get_save_mut()
-                                    .use_special(action.get_name());
-                            });
-                    }
                 });
 
                 ui.menu_button("Classes", |ui| self.classes_menu(ui));
@@ -246,12 +228,6 @@ impl CampaignGui {
                             self.game_state.extra_primary();
                             self.game_state.extra_primary();
                         }
-                    }
-                    if !action.is_usable() && ui.button("Refresh").clicked() {
-                        self.game_state.refresh_special(action.get_name().as_str());
-                        self.current_save
-                            .get_save_mut()
-                            .refresh_special(action.get_name());
                     }
                 });
             }
