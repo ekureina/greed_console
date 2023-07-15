@@ -120,8 +120,17 @@ impl CampaignGui {
                     }
                 });
                 ui.menu_button("Actions", |ui| {
+                    if ui.button("Refresh Primary Action").clicked() {
+                        self.game_state.extra_primary();
+                    }
                     if ui.button("Refresh Secondary Action").clicked() {
                         self.game_state.extra_secondary();
+                    }
+                    if ui.button("Refresh Special Action").clicked() {
+                        self.game_state.extra_special();
+                    }
+                    if ui.button("Refresh Inspiration").clicked() {
+                        self.game_state.refresh_inspiration();
                     }
                 });
 

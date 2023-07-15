@@ -134,6 +134,10 @@ impl GameState {
         self.inspiration_usable = false;
     }
 
+    pub fn refresh_inspiration(&mut self) {
+        self.inspiration_usable = true;
+    }
+
     /**
      * Allow extra primary action to be used this turn
      */
@@ -146,6 +150,10 @@ impl GameState {
      */
     pub fn extra_secondary(&mut self) {
         self.secondary_actions += 1;
+    }
+
+    pub fn extra_special(&mut self) {
+        self.special_usable = true;
     }
 
     pub fn push_special(&mut self, special_action: SpecialAction) {
