@@ -19,6 +19,7 @@ pub struct CampaignGui {
     character_classes: Vec<Class>,
     character_origin: Option<Class>,
     class_cache: Rc<RefCell<ClassCache>>,
+    description_hovering: bool,
 }
 
 impl CampaignGui {
@@ -36,14 +37,15 @@ impl CampaignGui {
             character_classes: vec![],
             character_origin: None,
             class_cache,
+            description_hovering: true,
         }
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        egui::ScrollArea::both().show(ui, |ui| {
-            ui.vertical(|ui| {
-                self.campaign_menu(ui);
+        ui.vertical(|ui| {
+            self.campaign_menu(ui);
 
+            egui::ScrollArea::both().show(ui, |ui| {
                 ui.horizontal(|ui| {
                     if !self.utilities.is_empty() {
                         ui.vertical(|ui| {
@@ -132,6 +134,8 @@ impl CampaignGui {
                         &mut self.game_state,
                     ))
                 });
+
+                ui.checkbox(&mut self.description_hovering, "Hover Description");
             });
         });
     }
@@ -141,8 +145,16 @@ impl CampaignGui {
         ui.group(|ui| {
             ui.label("Utilities:");
             for utility in &self.utilities {
-                ui.label(utility.get_name())
-                    .on_hover_text(utility.get_description());
+                if self.description_hovering {
+                    ui.label(utility.get_name())
+                        .on_hover_text(utility.get_description());
+                } else {
+                    ui.label(format!(
+                        "{}\n{}",
+                        utility.get_name(),
+                        utility.get_description()
+                    ));
+                }
             }
         });
     }
@@ -152,8 +164,16 @@ impl CampaignGui {
         ui.group(|ui| {
             ui.label("Passives:");
             for passive in &self.passives {
-                ui.label(passive.get_name())
-                    .on_hover_text(passive.get_description());
+                if self.description_hovering {
+                    ui.label(passive.get_name())
+                        .on_hover_text(passive.get_description());
+                } else {
+                    ui.label(format!(
+                        "{}\n{}",
+                        passive.get_name(),
+                        passive.get_description()
+                    ));
+                }
             }
         });
     }
@@ -166,16 +186,20 @@ impl CampaignGui {
                 self.game_state.get_primary_actions()
             ));
             for action in &self.primary_actions {
-                if ui
-                    .add_enabled(
-                        self.game_state.get_primary_usable(),
-                        egui::Button::new(action.get_name()),
-                    )
-                    .on_hover_text(action.get_description())
-                    .on_disabled_hover_text(action.get_description())
-                    .clicked()
-                    && action.get_name() != "Execute"
-                {
+                let button_response = ui.add_enabled(
+                    self.game_state.get_primary_usable(),
+                    egui::Button::new(action.get_name()),
+                );
+                let button_response = if self.description_hovering {
+                    button_response
+                        .on_hover_text(action.get_description())
+                        .on_disabled_hover_text(action.get_description())
+                } else {
+                    ui.label(action.get_description());
+                    button_response
+                };
+
+                if button_response.clicked() && action.get_name() != "Execute" {
                     self.game_state.use_primary();
                 }
             }
@@ -190,15 +214,19 @@ impl CampaignGui {
                 self.game_state.get_secondary_actions()
             ));
             for action in &self.secondary_actions {
-                if ui
-                    .add_enabled(
-                        self.game_state.get_secondary_usable(),
-                        egui::Button::new(action.get_name()),
-                    )
-                    .on_hover_text(action.get_description())
-                    .on_disabled_hover_text(action.get_description())
-                    .clicked()
-                {
+                let button_response = ui.add_enabled(
+                    self.game_state.get_secondary_usable(),
+                    egui::Button::new(action.get_name()),
+                );
+                let button_response = if self.description_hovering {
+                    button_response
+                        .on_hover_text(action.get_description())
+                        .on_disabled_hover_text(action.get_description())
+                } else {
+                    ui.label(action.get_description());
+                    button_response
+                };
+                if button_response.clicked() {
                     self.game_state.use_secondary();
                 }
             }
@@ -210,26 +238,28 @@ impl CampaignGui {
             ui.label("Specials:");
 
             for action in &self.game_state.get_special_actions().clone() {
-                ui.horizontal(|ui| {
-                    if ui
-                        .add_enabled(
-                            action.is_usable() && self.game_state.get_any_special_usable(),
-                            egui::Button::new(action.get_name()),
-                        )
+                let button_response = ui.add_enabled(
+                    action.is_usable() && self.game_state.get_any_special_usable(),
+                    egui::Button::new(action.get_name()),
+                );
+                let button_response = if self.description_hovering {
+                    button_response
                         .on_hover_text(action.get_description())
                         .on_disabled_hover_text(action.get_description())
-                        .clicked()
-                    {
-                        self.game_state.use_special(action.get_name().as_str());
-                        self.current_save
-                            .get_save_mut()
-                            .use_special(action.get_name().as_str());
-                        if action.is_named("Action Surge") {
-                            self.game_state.extra_primary();
-                            self.game_state.extra_primary();
-                        }
+                } else {
+                    ui.label(action.get_description());
+                    button_response
+                };
+                if button_response.clicked() {
+                    self.game_state.use_special(action.get_name().as_str());
+                    self.current_save
+                        .get_save_mut()
+                        .use_special(action.get_name().as_str());
+                    if action.is_named("Action Surge") {
+                        self.game_state.extra_primary();
+                        self.game_state.extra_primary();
                     }
-                });
+                }
             }
         });
     }
