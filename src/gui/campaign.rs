@@ -73,7 +73,6 @@ impl CampaignGui {
                         });
                     }
 
-                    // List of all non-Action surge specials
                     if !(self.game_state.get_special_actions().is_empty()) {
                         ui.vertical(|ui| {
                             self.special_panel(ui);
@@ -260,10 +259,18 @@ impl CampaignGui {
                     button_response
                 };
                 if button_response.clicked() {
-                    self.game_state.use_special(action.get_name().as_str());
-                    self.current_save
-                        .get_save_mut()
-                        .use_special(action.get_name().as_str());
+                    if action
+                        .get_description()
+                        .to_lowercase()
+                        .contains("repeatable")
+                    {
+                        self.game_state.use_repeatable_special();
+                    } else {
+                        self.game_state.use_special(action.get_name().as_str());
+                        self.current_save
+                            .get_save_mut()
+                            .use_special(action.get_name().as_str());
+                    }
                     if action.is_named("Action Surge") {
                         self.game_state.extra_primary();
                         self.game_state.extra_primary();

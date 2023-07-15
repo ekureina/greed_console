@@ -127,6 +127,10 @@ impl GameState {
         self.special_usable = false;
     }
 
+    pub fn use_repeatable_special(&mut self) {
+        self.special_usable = false;
+    }
+
     /**
      * Set GameState such that inspiration was used
      */
