@@ -168,7 +168,7 @@ impl GuiGreedApp {
             if ui.button("Create").clicked() {
                 let mut campaign_gui = CampaignGui::new_refreshable(
                     SaveWithPath::new(Save::new(self.new_campaign_name_entry.clone())),
-                    Rc::new(RefCell::new(ClassCache::new(vec![], vec![]))),
+                    self.class_cache_rc.clone(),
                 );
                 campaign_gui.refresh_campaign();
                 self.new_campaign_name_entry.clear();
