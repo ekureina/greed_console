@@ -70,8 +70,8 @@ impl ClassPassive {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Class {
     name: String,
-    utility: ClassUtility,
-    passive: ClassPassive,
+    utilities: Vec<ClassUtility>,
+    passives: Vec<ClassPassive>,
     primary_action: PrimaryAction,
     secondary_action: SecondaryAction,
     special_action: SpecialAction,
@@ -81,8 +81,8 @@ pub struct Class {
 impl Class {
     pub fn new<N: Into<String>>(
         name: N,
-        utility: ClassUtility,
-        passive: ClassPassive,
+        utilities: Vec<ClassUtility>,
+        passives: Vec<ClassPassive>,
         primary_action: PrimaryAction,
         secondary_action: SecondaryAction,
         special_action: SpecialAction,
@@ -90,8 +90,8 @@ impl Class {
     ) -> Class {
         Class {
             name: name.into(),
-            utility,
-            passive,
+            utilities,
+            passives,
             primary_action,
             secondary_action,
             special_action,
@@ -103,12 +103,12 @@ impl Class {
         self.name.clone()
     }
 
-    pub fn get_utility(&self) -> ClassUtility {
-        self.utility.clone()
+    pub fn get_utilities(&self) -> &Vec<ClassUtility> {
+        &self.utilities
     }
 
-    pub fn get_passive(&self) -> ClassPassive {
-        self.passive.clone()
+    pub fn get_passives(&self) -> &Vec<ClassPassive> {
+        &self.passives
     }
 
     pub fn get_primary_action(&self) -> PrimaryAction {

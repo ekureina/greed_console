@@ -50,11 +50,15 @@ impl Character {
                 if origin.get_name() == "Human" {
                     vec![]
                 } else {
-                    vec![origin.get_utility()]
+                    origin.get_utilities().clone()
                 }
             })
             .into_iter()
-            .chain(character_classes.iter().map(Class::get_utility))
+            .chain(
+                character_classes
+                    .iter()
+                    .flat_map(|class| class.get_utilities().clone()),
+            )
             .collect();
 
         let passives = character_origin
@@ -62,11 +66,15 @@ impl Character {
                 if origin.get_name() == "Human" {
                     vec![]
                 } else {
-                    vec![origin.get_passive()]
+                    origin.get_passives().clone()
                 }
             })
             .into_iter()
-            .chain(character_classes.iter().map(Class::get_passive))
+            .chain(
+                character_classes
+                    .iter()
+                    .flat_map(|class| class.get_passives().clone()),
+            )
             .collect();
 
         let primary_actions = character_origin

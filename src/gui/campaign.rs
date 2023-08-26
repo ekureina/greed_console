@@ -393,8 +393,8 @@ impl CampaignGui {
     }
 
     fn add_new_class(&mut self, class: Class) {
-        self.utilities.push(class.get_utility());
-        self.passives.push(class.get_passive());
+        self.utilities.extend_from_slice(class.get_utilities());
+        self.passives.extend_from_slice(class.get_passives());
         self.primary_actions.push(class.get_primary_action());
         self.secondary_actions.push(class.get_secondary_action());
         self.game_state.push_special(class.get_special_action());
@@ -408,14 +408,14 @@ impl CampaignGui {
         if let Some(utility_index) = self
             .utilities
             .iter()
-            .position(|action| action.clone() == class.get_utility())
+            .position(|action| class.get_utilities().contains(action))
         {
             self.utilities.remove(utility_index);
         }
         if let Some(passive_index) = self
             .passives
             .iter()
-            .position(|action| action.clone() == class.get_passive())
+            .position(|action| class.get_passives().contains(action))
         {
             self.passives.remove(passive_index);
         }

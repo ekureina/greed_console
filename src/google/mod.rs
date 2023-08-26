@@ -141,8 +141,8 @@ fn get_class(
         .to_owned();
     Ok(Class::new(
         class_name,
-        ClassUtility::new(utility_name, utility_description),
-        ClassPassive::new(passive_name, passive_description),
+        vec![ClassUtility::new(utility_name, utility_description)],
+        vec![ClassPassive::new(passive_name, passive_description)],
         PrimaryAction::new(primary_name, primary_description),
         SecondaryAction::new(secondary_name, secondary_description),
         SpecialAction::new(special_name, special_description),
@@ -159,8 +159,8 @@ fn get_origin(
     if origin_name == "Human" {
         Ok(Class::new(
             String::from("Human"),
-            ClassUtility::new(String::new(), String::new()),
-            ClassPassive::new(String::new(), String::new()),
+            vec![ClassUtility::new(String::new(), String::new())],
+            vec![ClassPassive::new(String::new(), String::new())],
             PrimaryAction::new(String::new(), String::new()),
             SecondaryAction::new(String::new(), String::new()),
             SpecialAction::new(String::new(), String::new()),
@@ -227,8 +227,8 @@ fn get_origin(
             .to_owned();
         Ok(Class::new(
             origin_name,
-            ClassUtility::new(utility_name, utility_description),
-            ClassPassive::new(passive_name, passive_description),
+            vec![ClassUtility::new(utility_name, utility_description)],
+            vec![ClassPassive::new(passive_name, passive_description)],
             PrimaryAction::new(primary_name, primary_description),
             SecondaryAction::new(secondary_name, secondary_description),
             SpecialAction::new(special_name, special_description),
