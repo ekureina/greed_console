@@ -1553,7 +1553,7 @@ dependencies = [
 
 [[package]]
 name = "greed_console"
-version = "0.10.0-devel"
+version = "0.10.0"
 dependencies = [
  "clap",
  "eframe",
