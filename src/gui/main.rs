@@ -245,7 +245,7 @@ impl GuiGreedApp {
             ));
         }
         if self.rule_refresh_handle.borrow().is_some() {
-            info_log_and_notify(&mut self.toasts, "Refreshing rules!");
+            info!("Refreshing rules!");
             if self
                 .rule_refresh_handle
                 .borrow()

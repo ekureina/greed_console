@@ -167,14 +167,11 @@ impl CampaignGui {
             ui.label("Utilities:");
             for utility in &self.utilities {
                 if self.description_hovering {
-                    ui.label(utility.get_name())
+                    ui.label(egui::RichText::new(utility.get_name()).strong())
                         .on_hover_text(utility.get_description());
                 } else {
-                    ui.label(format!(
-                        "{}\n{}",
-                        utility.get_name(),
-                        utility.get_description()
-                    ));
+                    ui.label(egui::RichText::new(utility.get_name()).strong());
+                    ui.label(utility.get_description());
                 }
             }
         });
@@ -186,14 +183,11 @@ impl CampaignGui {
             ui.label("Passives:");
             for passive in &self.passives {
                 if self.description_hovering {
-                    ui.label(passive.get_name())
+                    ui.label(egui::RichText::new(passive.get_name()).strong())
                         .on_hover_text(passive.get_description());
                 } else {
-                    ui.label(format!(
-                        "{}\n{}",
-                        passive.get_name(),
-                        passive.get_description()
-                    ));
+                    ui.label(egui::RichText::new(passive.get_name()).strong());
+                    ui.label(passive.get_description());
                 }
             }
         });
