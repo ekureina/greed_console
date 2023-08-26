@@ -297,7 +297,8 @@ impl GuiGreedApp {
             self.app_state
                 .get_most_recent_campaign_path()
                 .map(PathBuf::from),
-        );
+        )
+        .title("Save Campaign As");
         dialog.open();
         self.file_dialog = Some(dialog);
     }
@@ -307,7 +308,8 @@ impl GuiGreedApp {
             self.app_state
                 .get_most_recent_campaign_path()
                 .map(PathBuf::from),
-        );
+        )
+        .title("Open Campaign");
         dialog.open();
         self.file_dialog = Some(dialog);
     }
@@ -351,11 +353,11 @@ impl GuiGreedApp {
     fn display_dialog_boxes(&mut self, ctx: &egui::Context) {
         if let Some(dialog) = &mut self.file_dialog {
             if dialog.show(ctx).selected() {
-                if let Some(file) = dialog.path() {
+                if let Some(file) = dialog.path().map(|file| file.as_os_str().to_owned()) {
                     match dialog.dialog_type() {
                         egui_file::DialogType::OpenFile => {
                             self.app_state.add_new_path_to_history(file.clone());
-                            self.open_new_save(&file.as_os_str().to_owned());
+                            self.open_new_save(&file);
                         }
                         egui_file::DialogType::SaveFile => {
                             if let Some((_, campaign_gui)) = &mut self.tree.find_active() {
