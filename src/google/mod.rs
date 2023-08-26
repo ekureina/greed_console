@@ -61,7 +61,7 @@ async fn get_document() -> Result<google_docs1::api::Document, GetOriginsAndClas
         .1)
 }
 
-#[allow(let_underscore_drop)]
+#[allow(let_underscore_drop, clippy::too_many_lines)]
 fn get_class(
     first_line: &str,
     mut paragraphs: impl Iterator<Item = String>,
@@ -84,28 +84,56 @@ fn get_class(
     paragraphs
         .next()
         .ok_or(GetOriginsAndClassesError::FormatChange)?;
-    let utility_name = paragraphs
-        .next()
-        .ok_or(GetOriginsAndClassesError::FormatChange)?
-        .trim_end()
-        .to_owned();
-    let utility_description = paragraphs
+    let utility_data = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Passive"))
-        .collect::<String>()
-        .trim_end()
-        .to_owned();
-    let passive_name = paragraphs
-        .next()
-        .ok_or(GetOriginsAndClassesError::ClassParse)?
-        .trim_end()
-        .to_owned();
-    let passive_description = paragraphs
+        .collect::<Vec<String>>();
+    let mut utility_description = String::new();
+    let mut utility_names = vec![];
+    let mut utility_descriptions = vec![];
+    for line in utility_data {
+        if line.starts_with('\t') || line.starts_with('-') {
+            utility_description.push_str(&line);
+        } else {
+            utility_names.push(line.trim_end().to_owned());
+            if !utility_description.is_empty() {
+                utility_descriptions.push(utility_description.trim_end().to_owned());
+                utility_description.clear();
+            }
+        }
+    }
+    if !utility_description.is_empty() {
+        utility_descriptions.push(utility_description.trim_end().to_owned());
+    }
+    let utilities = utility_names
+        .iter()
+        .zip(utility_descriptions)
+        .map(|(name, description)| ClassUtility::new(name, description));
+    let passive_data = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Primary"))
-        .collect::<String>()
-        .trim_end()
-        .to_owned();
+        .collect::<Vec<String>>();
+    let mut passive_description = String::new();
+    let mut passive_names = vec![];
+    let mut passive_descriptions = vec![];
+    for line in passive_data {
+        if line.starts_with('\t') || line.starts_with('-') {
+            passive_description.push_str(&line);
+        } else {
+            passive_names.push(line.trim_end().to_owned());
+            if !passive_description.is_empty() {
+                passive_descriptions.push(passive_description.trim_end().to_owned());
+                passive_description.clear();
+            }
+        }
+    }
+    if !passive_description.is_empty() {
+        passive_descriptions.push(passive_description.trim_end().to_owned());
+    }
+    let passives = passive_names
+        .iter()
+        .zip(passive_descriptions)
+        .map(|(name, description)| ClassPassive::new(name, description));
     let primary_name = paragraphs
         .next()
         .ok_or(GetOriginsAndClassesError::ClassParse)?
@@ -141,8 +169,8 @@ fn get_class(
         .to_owned();
     Ok(Class::new(
         class_name,
-        vec![ClassUtility::new(utility_name, utility_description)],
-        vec![ClassPassive::new(passive_name, passive_description)],
+        utilities.collect(),
+        passives.collect(),
         PrimaryAction::new(primary_name, primary_description),
         SecondaryAction::new(secondary_name, secondary_description),
         SpecialAction::new(special_name, special_description),
@@ -150,7 +178,7 @@ fn get_class(
     ))
 }
 
-#[allow(let_underscore_drop)]
+#[allow(let_underscore_drop, clippy::too_many_lines)]
 fn get_origin(
     first_line: &str,
     mut paragraphs: impl Iterator<Item = String>,
@@ -170,28 +198,61 @@ fn get_origin(
         paragraphs
             .next()
             .ok_or(GetOriginsAndClassesError::OriginParse)?;
-        let utility_name = paragraphs
-            .next()
-            .ok_or(GetOriginsAndClassesError::OriginParse)?
-            .trim_end()
-            .to_owned();
-        let utility_description = paragraphs
+        let utility_data = paragraphs
             .by_ref()
             .take_while(|line| !line.starts_with("Passive"))
-            .collect::<String>()
-            .trim_end()
-            .to_owned();
-        let passive_name = paragraphs
-            .next()
-            .ok_or(GetOriginsAndClassesError::OriginParse)?
-            .trim_end()
-            .to_owned();
-        let passive_description = paragraphs
+            .collect::<Vec<String>>();
+
+        let mut utility_description = String::new();
+        let mut utility_names = vec![];
+        let mut utility_descriptions = vec![];
+        for line in utility_data {
+            if line.starts_with('\t') || line.starts_with('-') {
+                utility_description.push_str(&line);
+            } else {
+                utility_names.push(line.trim_end().to_owned());
+                if !utility_description.is_empty() {
+                    utility_descriptions.push(utility_description.trim_end().to_owned());
+                    utility_description.clear();
+                }
+            }
+        }
+        if !utility_description.is_empty() {
+            utility_descriptions.push(utility_description.trim_end().to_owned());
+        }
+        let utilities = utility_names
+            .iter()
+            .zip(utility_descriptions)
+            .map(|(name, description)| ClassUtility::new(name, description));
+        let passive_data = paragraphs
             .by_ref()
             .take_while(|line| !line.starts_with("Primary"))
-            .collect::<String>()
-            .trim_end()
-            .to_owned();
+            .collect::<Vec<String>>();
+        let mut passive_description = String::new();
+        let mut passive_names = vec![];
+        let mut passive_descriptions = vec![];
+        for line in passive_data {
+            if line.starts_with('\t') || line.starts_with('-') {
+                passive_description.push_str(&line);
+            } else {
+                passive_names.push(line.trim_end().to_owned());
+                if !passive_description.is_empty() {
+                    passive_descriptions.push(passive_description.trim_end().to_owned());
+                    passive_description.clear();
+                }
+            }
+        }
+        if !passive_description.is_empty() {
+            passive_descriptions.push(passive_description.trim_end().to_owned());
+        }
+        let passives = passive_names
+            .iter()
+            .zip(passive_descriptions)
+            .map(|(name, description)| ClassPassive::new(name, description));
+        println!(
+            "Passives: {:?}",
+            passives.clone().collect::<Vec<ClassPassive>>()
+        );
         let primary_name = paragraphs
             .next()
             .ok_or(GetOriginsAndClassesError::OriginParse)?
@@ -227,8 +288,8 @@ fn get_origin(
             .to_owned();
         Ok(Class::new(
             origin_name,
-            vec![ClassUtility::new(utility_name, utility_description)],
-            vec![ClassPassive::new(passive_name, passive_description)],
+            utilities.collect(),
+            passives.collect(),
             PrimaryAction::new(primary_name, primary_description),
             SecondaryAction::new(secondary_name, secondary_description),
             SpecialAction::new(special_name, special_description),
