@@ -102,6 +102,19 @@ impl CampaignGui {
             .set_battle_defense(self.game_state.get_battle_defense());
     }
 
+    pub fn get_level(&self) -> usize {
+        let class_count = self.character_classes.len();
+        if self
+            .character_origin
+            .as_ref()
+            .is_some_and(|origin| origin.get_name() == "Human")
+        {
+            class_count - 1
+        } else {
+            class_count
+        }
+    }
+
     fn campaign_menu(&mut self, ui: &mut egui::Ui) {
         ui.group(|ui| {
             ui.horizontal(|ui| {

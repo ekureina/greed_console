@@ -2,7 +2,7 @@ use super::campaign::CampaignGui;
 use super::state::AppState;
 use super::tabs::CampaignTabViewer;
 use crate::google::GetOriginsAndClassesError;
-use crate::gui::util::error_log_and_notify;
+use crate::gui::util::{error_log_and_notify, info_log_and_notify};
 use crate::model::classes::ClassCache;
 use crate::model::save::{Save, SaveWithPath};
 
@@ -209,7 +209,7 @@ impl GuiGreedApp {
 
         if let Some((_, campaign_gui)) = self.tree.find_active() {
             if ui.button("Save").clicked() {
-                info!("Attempting to save campaign!");
+                info_log_and_notify(&mut self.toasts, "Attempting to save campaign!");
                 let open_file_picker = if campaign_gui.get_path().is_some() {
                     campaign_gui
                         .save()
@@ -238,14 +238,14 @@ impl GuiGreedApp {
 
     fn refresh_rules(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         if ui.button("Refresh Rules").clicked() {
-            info!("Started refreshing rules!");
+            info_log_and_notify(&mut self.toasts, "Started refreshing rules!");
             self.rule_refresh_handle = RefCell::new(Some(
                 self.rule_refresh_runtime
                     .spawn(crate::google::get_origins_and_classes()),
             ));
         }
         if self.rule_refresh_handle.borrow().is_some() {
-            info!("Refreshing rules!");
+            info_log_and_notify(&mut self.toasts, "Refreshing rules!");
             if self
                 .rule_refresh_handle
                 .borrow()
@@ -253,7 +253,7 @@ impl GuiGreedApp {
                 .unwrap()
                 .is_finished()
             {
-                info!("Rules refreshed...");
+                info_log_and_notify(&mut self.toasts, "Rules refreshed...");
                 let refresh_handle = self.rule_refresh_handle.replace(None);
                 match self
                     .rule_refresh_runtime
@@ -270,7 +270,7 @@ impl GuiGreedApp {
                                 &*self.class_cache_rc.borrow(),
                             );
                         }
-                        info!("Campaign updated to new rules.");
+                        info_log_and_notify(&mut self.toasts, "Campaign updated to new rules.");
                         if let Some((_, campaign_gui)) = self.tree.find_active() {
                             campaign_gui.refresh_campaign();
                         }

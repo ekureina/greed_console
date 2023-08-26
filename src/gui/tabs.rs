@@ -28,8 +28,9 @@ impl egui_dock::TabViewer for CampaignTabViewer {
         match tab.get_path() {
             Some(text) => {
                 format!(
-                    "{dirty_mark}{} [{}]",
+                    "{dirty_mark}{} (Level: {}) [{}]",
                     tab.get_save().get_campaign_name(),
+                    tab.get_level(),
                     text.to_string_lossy()
                 )
             }
