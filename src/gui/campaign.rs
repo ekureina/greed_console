@@ -109,7 +109,11 @@ impl CampaignGui {
             .as_ref()
             .is_some_and(|origin| origin.get_name() == "Human")
         {
-            class_count - 1
+            if class_count < 1 {
+                0
+            } else {
+                class_count - 1
+            }
         } else {
             class_count
         }
