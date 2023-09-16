@@ -1646,6 +1646,7 @@ dependencies = [
  "egui-notify",
  "egui_dock",
  "env_logger",
+ "fastrand 2.0.0",
  "google-docs1",
  "indexmap 2.0.0",
  "log",

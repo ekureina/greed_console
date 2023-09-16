@@ -3,12 +3,13 @@ use super::state::AppState;
 use super::tabs::CampaignTabViewer;
 use crate::google::GetOriginsAndClassesError;
 use crate::gui::util::{error_log_and_notify, info_log_and_notify};
-use crate::model::classes::ClassCache;
+use crate::model::classes::{Class, ClassCache};
 use crate::model::save::{Save, SaveWithPath};
 
 use eframe::egui;
 use eframe::glow::Context;
 use eframe::Storage;
+use egui::emath::Numeric;
 use egui_dock::{Style, Tree};
 use egui_notify::Toasts;
 use log::info;
@@ -64,12 +65,14 @@ pub struct GuiGreedApp {
     tab_viewer: CampaignTabViewer,
     app_state: AppState,
     new_campaign_name_entry: String,
+    random_campaign_name_entry: String,
     class_cache_rc: Rc<RefCell<ClassCache>>,
     rule_refresh_runtime: Runtime,
     rule_refresh_handle: RefCell<Option<JoinHandle<Result<ClassCache, GetOriginsAndClassesError>>>>,
     show_save_on_quit_dialog: bool,
     allowed_to_quit: bool,
     toasts: Toasts,
+    random_level: f64,
 }
 
 impl GuiGreedApp {
@@ -117,12 +120,14 @@ impl GuiGreedApp {
             tab_viewer: CampaignTabViewer::new(),
             app_state,
             new_campaign_name_entry: String::new(),
+            random_campaign_name_entry: String::new(),
             class_cache_rc,
             rule_refresh_runtime,
             rule_refresh_handle: RefCell::new(None),
             show_save_on_quit_dialog: false,
             allowed_to_quit: false,
             toasts,
+            random_level: 0.0,
         }
     }
 
@@ -170,6 +175,25 @@ impl GuiGreedApp {
                 campaign_gui.refresh_campaign();
                 self.new_campaign_name_entry.clear();
                 self.tree.push_to_first_leaf(campaign_gui);
+            }
+        });
+        ui.menu_button("New Random Campaign", |ui| {
+            ui.text_edit_singleline(&mut self.random_campaign_name_entry);
+            ui.horizontal(|ui| {
+                ui.label("Level:");
+                ui.add(egui::Slider::new(
+                    &mut self.random_level,
+                    0.0..=self.class_cache_rc.borrow().get_classes().len().to_f64(),
+                ));
+            });
+            if ui.button("Create").clicked() {
+                let mut campaign = CampaignGui::new_refreshable(
+                    SaveWithPath::new(Save::new(self.random_campaign_name_entry.clone())),
+                    self.class_cache_rc.clone(),
+                );
+                self.random_campaign_name_entry.clear();
+                self.random_campaign(&mut campaign);
+                self.tree.push_to_first_leaf(campaign);
             }
         });
         if ui.button("Open").clicked() {
@@ -406,6 +430,53 @@ impl GuiGreedApp {
             }
         }
         results
+    }
+
+    fn random_campaign(&self, campaign: &mut CampaignGui) {
+        let class_cache = self.class_cache_rc.borrow();
+        let origins = class_cache.get_origins();
+        let classes = class_cache.get_classes();
+        let origin = fastrand::choice(origins).unwrap().clone();
+        let level: usize = unsafe {
+            if origin.get_name() == "Human" {
+                (self.random_level + 1.0)
+                    .to_f64()
+                    .clamp(0.0, classes.len().to_f64())
+            } else {
+                self.random_level
+            }
+            .to_int_unchecked()
+        };
+        campaign.change_origin(Some(origin));
+
+        let mut character_classes: Vec<Class> = Vec::with_capacity(level);
+
+        for _ in 0..level {
+            let available_classes = classes
+                .iter()
+                .filter(|class| {
+                    !character_classes.contains(class)
+                        && class.get_class_available(
+                            &character_classes
+                                .iter()
+                                .map(Class::get_name)
+                                .collect::<Vec<_>>(),
+                        )
+                })
+                .collect::<Vec<_>>();
+
+            if let Some(class) = fastrand::choice(available_classes) {
+                character_classes.push((*class).clone());
+            } else {
+                break;
+            }
+        }
+
+        for class in character_classes {
+            campaign.add_new_class(class);
+        }
+
+        campaign.refresh_campaign();
     }
 }
 

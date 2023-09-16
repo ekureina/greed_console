@@ -323,7 +323,7 @@ impl CampaignGui {
             .change_defense_for_battle(self.current_save.get_save().get_battle_defense());
     }
 
-    fn change_origin(&mut self, new_origin: Option<Class>) {
+    pub fn change_origin(&mut self, new_origin: Option<Class>) {
         let campaign = self.current_save.get_save_mut().get_character_mut();
         campaign.replace_origin(new_origin.map(|class| class.get_name()));
         self.refresh_campaign();
@@ -390,7 +390,7 @@ impl CampaignGui {
         }
     }
 
-    fn add_new_class(&mut self, class: Class) {
+    pub fn add_new_class(&mut self, class: Class) {
         self.utilities.extend_from_slice(class.get_utilities());
         self.passives.extend_from_slice(class.get_passives());
         self.primary_actions.push(class.get_primary_action());
