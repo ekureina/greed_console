@@ -10,9 +10,9 @@ use eframe::egui;
 use eframe::glow::Context;
 use eframe::Storage;
 use egui_dock::{Style, Tree};
-use egui_file::FileDialog;
 use egui_notify::Toasts;
 use log::info;
+use rfd::FileDialog;
 use tokio::join;
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
@@ -20,7 +20,6 @@ use tokio::task::JoinHandle;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ffi::OsString;
-use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -65,7 +64,6 @@ pub struct GuiGreedApp {
     tab_viewer: CampaignTabViewer,
     app_state: AppState,
     new_campaign_name_entry: String,
-    file_dialog: Option<FileDialog>,
     class_cache_rc: Rc<RefCell<ClassCache>>,
     rule_refresh_runtime: Runtime,
     rule_refresh_handle: RefCell<Option<JoinHandle<Result<ClassCache, GetOriginsAndClassesError>>>>,
@@ -119,7 +117,6 @@ impl GuiGreedApp {
             tab_viewer: CampaignTabViewer::new(),
             app_state,
             new_campaign_name_entry: String::new(),
-            file_dialog: None,
             class_cache_rc,
             rule_refresh_runtime,
             rule_refresh_handle: RefCell::new(None),
@@ -176,7 +173,7 @@ impl GuiGreedApp {
             }
         });
         if ui.button("Open").clicked() {
-            self.open_open_dialog();
+            self.open_campaign();
         }
 
         if !self.app_state.is_campaign_history_empty() {
@@ -226,13 +223,13 @@ impl GuiGreedApp {
                 };
 
                 if open_file_picker {
-                    self.open_save_as_dialog();
+                    self.save_as();
                 }
             }
         }
 
         if self.tree.find_active().is_some() && ui.button("Save As...").clicked() {
-            self.open_save_as_dialog();
+            self.save_as();
         }
     }
 
@@ -292,26 +289,75 @@ impl GuiGreedApp {
             .show(ctx, &mut self.tab_viewer);
     }
 
-    fn open_save_as_dialog(&mut self) {
-        let mut dialog = FileDialog::save_file(
-            self.app_state
-                .get_most_recent_campaign_path()
-                .map(PathBuf::from),
-        )
-        .title("Save Campaign As");
-        dialog.open();
-        self.file_dialog = Some(dialog);
+    fn save_as(&mut self) -> bool {
+        let dialog = FileDialog::new();
+        #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+        let dialog = if let Some(path) = self.app_state.get_most_recent_campaign_path() {
+            if let Some(converted_path) = path.to_str() {
+                dialog.set_file_name(converted_path)
+            } else {
+                dialog
+            }
+        } else {
+            dialog
+        };
+
+        #[cfg(any(target_os = "windows", target_os = "linux"))]
+        let dialog = dialog
+            .set_title("Save Campaign As")
+            .add_filter("Greed Campaign", &["ron"]);
+
+        dialog
+            .save_file()
+            .and_then(|picked_file| {
+                self.tree.find_active().map(|(_, campaign_gui)| {
+                    match campaign_gui.save_to(picked_file.clone()) {
+                        Ok(()) => {
+                            info!(
+                                "Successfully saved file to {}",
+                                picked_file.to_string_lossy()
+                            );
+
+                            if let Some(path) = campaign_gui.set_path(picked_file) {
+                                self.app_state.add_new_path_to_history(path);
+                            }
+                            true
+                        }
+                        Err(err) => {
+                            error_log_and_notify(
+                                &mut self.toasts,
+                                format!("Error while saving to file {picked_file:?}: {err}"),
+                            );
+                            false
+                        }
+                    }
+                })
+            })
+            .unwrap_or(false)
     }
 
-    fn open_open_dialog(&mut self) {
-        let mut dialog = FileDialog::open_file(
-            self.app_state
-                .get_most_recent_campaign_path()
-                .map(PathBuf::from),
-        )
-        .title("Open Campaign");
-        dialog.open();
-        self.file_dialog = Some(dialog);
+    fn open_campaign(&mut self) {
+        let dialog = FileDialog::new();
+
+        #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+        let dialog = if let Some(path) = self.app_state.get_most_recent_campaign_path() {
+            if let Some(converted_path) = path.to_str() {
+                dialog.set_file_name(converted_path)
+            } else {
+                dialog
+            }
+        } else {
+            dialog
+        };
+
+        #[cfg(any(target_os = "windows", target_os = "linux"))]
+        let dialog = dialog
+            .set_title("Open Campaign")
+            .add_filter("Greed Campaign", &["ron"]);
+
+        if let Some(picked_file) = dialog.pick_file() {
+            self.open_new_save(&picked_file.into_os_string());
+        }
     }
 
     fn open_new_save(&mut self, new_save_path: &OsString) {
@@ -350,54 +396,11 @@ impl GuiGreedApp {
         }
     }
 
-    fn display_dialog_boxes(&mut self, ctx: &egui::Context) {
-        if let Some(dialog) = &mut self.file_dialog {
-            if dialog.show(ctx).selected() {
-                if let Some(file) = dialog.path().map(|file| file.as_os_str().to_owned()) {
-                    match dialog.dialog_type() {
-                        egui_file::DialogType::OpenFile => {
-                            self.app_state.add_new_path_to_history(file.clone());
-                            self.open_new_save(&file);
-                        }
-                        egui_file::DialogType::SaveFile => {
-                            if let Some((_, campaign_gui)) = &mut self.tree.find_active() {
-                                match campaign_gui.save_to(file.clone()) {
-                                    Ok(()) => {
-                                        info!(
-                                            "Successfully saved file to {}",
-                                            file.to_string_lossy()
-                                        );
-
-                                        if let Some(path) = campaign_gui.set_path(file) {
-                                            self.app_state.add_new_path_to_history(path);
-                                        }
-                                    }
-                                    Err(err) => {
-                                        error_log_and_notify(
-                                            &mut self.toasts,
-                                            format!("Error while saving to file {file:?}: {err}"),
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                        egui_file::DialogType::SelectFolder => {
-                            error_log_and_notify(
-                                &mut self.toasts,
-                                "Unreachable File dialog reached, need to handle!",
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     fn perform_on_all_guis_mut<T>(&mut self, gui_action: &dyn Fn(&mut CampaignGui) -> T) -> Vec<T> {
         let mut results = Vec::with_capacity(self.tree.num_tabs());
         for node in self.tree.iter_mut() {
             if let egui_dock::node::Node::Leaf { tabs, .. } = node {
-                for gui in tabs.iter_mut() {
+                for gui in tabs {
                     results.push(gui_action(gui));
                 }
             }
@@ -413,8 +416,6 @@ impl eframe::App for GuiGreedApp {
         self.toasts.show(ctx);
 
         self.menu_panel(ctx, frame);
-
-        self.display_dialog_boxes(ctx);
 
         self.main_panel(ctx);
 
@@ -463,7 +464,7 @@ impl eframe::App for GuiGreedApp {
                             if self.allowed_to_quit {
                                 frame.close();
                             } else {
-                                self.open_save_as_dialog();
+                                self.save_as();
                                 self.show_save_on_quit_dialog = false;
                             }
                         }
