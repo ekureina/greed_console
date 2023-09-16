@@ -403,49 +403,36 @@ impl CampaignGui {
     }
 
     fn remove_class(&mut self, class: &Class) {
-        if let Some(utility_index) = self
-            .utilities
-            .iter()
-            .position(|action| class.get_utilities().contains(action))
-        {
-            self.utilities.remove(utility_index);
-        }
-        if let Some(passive_index) = self
-            .passives
-            .iter()
-            .position(|action| class.get_passives().contains(action))
-        {
-            self.passives.remove(passive_index);
-        }
-        if let Some(primary_index) = self
-            .primary_actions
-            .iter()
-            .position(|action| action.clone() == class.get_primary_action())
-        {
-            self.primary_actions.remove(primary_index);
-        }
-        if let Some(secondary_index) = self
-            .secondary_actions
-            .iter()
-            .position(|action| action.clone() == class.get_secondary_action())
-        {
-            self.secondary_actions.remove(secondary_index);
-        }
+        self.utilities.retain(|utility| {
+            !class
+                .get_utilities()
+                .iter()
+                .map(ClassUtility::get_name)
+                .collect::<Vec<_>>()
+                .contains(&utility.get_name())
+        });
+        self.passives.retain(|passive| {
+            !class
+                .get_passives()
+                .iter()
+                .map(ClassPassive::get_name)
+                .collect::<Vec<_>>()
+                .contains(&passive.get_name())
+        });
+        self.primary_actions
+            .retain(|primary| class.get_primary_action().get_name() != primary.get_name());
+        self.secondary_actions
+            .retain(|secondary| class.get_secondary_action().get_name() != secondary.get_name());
         if let Some(special_index) = self
             .game_state
             .get_special_actions()
             .iter()
-            .position(|action| action.clone() == class.get_special_action())
+            .position(|action| action.clone().get_name() == class.get_special_action().get_name())
         {
             self.game_state.remove_special_action(special_index);
         }
-        if let Some(class_index) = self
-            .character_classes
-            .iter()
-            .position(|stored_class| stored_class == class)
-        {
-            self.character_classes.remove(class_index);
-        }
+        self.character_classes
+            .retain(|stored_class| stored_class.get_name() == class.get_name());
         self.current_save
             .get_save_mut()
             .get_character_mut()
