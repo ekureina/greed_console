@@ -149,4 +149,9 @@ impl Character {
             self.classes.remove(class_position);
         }
     }
+
+    pub fn clear(&mut self) {
+        self.origin = None;
+        self.classes.clear();
+    }
 }

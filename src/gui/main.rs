@@ -163,6 +163,7 @@ impl GuiGreedApp {
         });
     }
 
+    #[allow(clippy::too_many_lines)]
     fn campaign_menu(&mut self, ui: &mut egui::Ui) {
         ui.set_min_width(200.0);
         ui.menu_button("New", |ui| {
@@ -196,6 +197,28 @@ impl GuiGreedApp {
                 self.tree.push_to_first_leaf(campaign);
             }
         });
+        if self.tree.find_active().is_some() {
+            ui.menu_button("Randomize Campaign", |ui| {
+                ui.label("Level:");
+                ui.add(egui::Slider::new(
+                    &mut self.random_level,
+                    0.0..=self.class_cache_rc.borrow().get_classes().len().to_f64(),
+                ));
+                if ui.button("Randomize").clicked() {
+                    let mut new_gui = None;
+                    if let Some((_, campaign_gui)) = self.tree.find_active() {
+                        new_gui = Some(campaign_gui.clone());
+                    }
+                    if let Some(campaign_gui) = &mut new_gui {
+                        campaign_gui.clear_campaign();
+                        self.random_campaign(campaign_gui);
+                        if let Some((_, active_gui)) = self.tree.find_active() {
+                            *active_gui = campaign_gui.clone();
+                        }
+                    };
+                }
+            });
+        }
         if ui.button("Open").clicked() {
             self.open_campaign();
         }

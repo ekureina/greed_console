@@ -9,6 +9,7 @@ use crate::model::{
 
 use super::widgets::panels::StatsPanel;
 
+#[derive(Debug, Clone)]
 pub struct CampaignGui {
     game_state: GameState,
     current_save: SaveWithPath,
@@ -451,6 +452,12 @@ impl CampaignGui {
         for subclass in &subclasses {
             self.remove_class(subclass);
         }
+    }
+
+    pub fn clear_campaign(&mut self) {
+        self.current_save.get_save_mut().get_character_mut().clear();
+        self.current_save.get_save_mut().refresh_specials();
+        self.refresh_campaign();
     }
 
     pub fn get_save(&self) -> &Save {

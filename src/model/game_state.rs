@@ -22,7 +22,7 @@ use std::fmt::{self, Formatter, Result};
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GameState {
     round_num: u8,
     turn_side: TurnSide,
