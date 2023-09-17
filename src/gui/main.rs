@@ -148,12 +148,14 @@ impl GuiGreedApp {
                     self.campaign_menu(ui);
                 });
 
-                if ui.button("Next Battle").clicked() {
-                    self.perform_on_all_guis_mut(&CampaignGui::next_battle);
-                }
+                if self.tree.find_active().is_some() {
+                    if ui.button("Next Battle").clicked() {
+                        self.perform_on_all_guis_mut(&CampaignGui::next_battle);
+                    }
 
-                if ui.button("Next Turn").clicked() {
-                    self.perform_on_all_guis_mut(&CampaignGui::next_turn);
+                    if ui.button("Next Turn").clicked() {
+                        self.perform_on_all_guis_mut(&CampaignGui::next_turn);
+                    }
                 }
 
                 self.refresh_rules(ui, frame);
