@@ -357,16 +357,10 @@ impl CampaignGui {
         if self.character_classes.len() != self.class_cache.borrow().get_class_cache_count() {
             ui.menu_button("Add", |ui| {
                 let mut classes_to_add = vec![];
-                let current_class_names = self
-                    .character_classes
-                    .iter()
-                    .map(Class::get_name)
-                    .collect::<Vec<String>>();
-
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     for class in self.class_cache.borrow().get_classes() {
                         if !self.character_classes.contains(class)
-                            && class.get_class_available(&current_class_names)
+                            && class.get_class_available(&self.character_classes)
                             && ui.button(class.get_name()).clicked()
                         {
                             classes_to_add.push(class.clone());

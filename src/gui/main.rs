@@ -486,12 +486,7 @@ impl GuiGreedApp {
                 .iter()
                 .filter(|class| {
                     !character_classes.contains(class)
-                        && class.get_class_available(
-                            &character_classes
-                                .iter()
-                                .map(Class::get_name)
-                                .collect::<Vec<_>>(),
-                        )
+                        && class.get_class_available(&character_classes)
                 })
                 .collect::<Vec<_>>();
 

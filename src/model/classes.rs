@@ -128,15 +128,19 @@ impl Class {
         self.special_action.clone()
     }
 
-    pub fn get_class_available(&self, current_class_names: &[String]) -> bool {
+    pub fn get_class_available(&self, current_classes: &[Class]) -> bool {
         if self.name == "Form of the Crab" {
-            current_class_names
+            current_classes
                 .iter()
-                .any(|class_name| class_name.starts_with("Form of"))
+                .any(|class| class.get_name().starts_with("Form of"))
         } else {
-            self.class_requirements
-                .iter()
-                .all(|class_requirement| current_class_names.contains(class_requirement))
+            self.class_requirements.iter().all(|class_requirement| {
+                current_classes
+                    .iter()
+                    .map(Class::get_name)
+                    .collect::<Vec<String>>()
+                    .contains(class_requirement)
+            })
         }
     }
 
