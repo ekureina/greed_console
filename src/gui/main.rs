@@ -161,7 +161,6 @@ impl GuiGreedApp {
         });
     }
 
-    #[allow(clippy::too_many_lines)]
     fn campaign_menu(&mut self, ui: &mut egui::Ui) {
         ui.set_min_width(200.0);
         ui.menu_button("New", |ui| {
@@ -176,47 +175,9 @@ impl GuiGreedApp {
                 self.tree.push_to_first_leaf(campaign_gui);
             }
         });
-        ui.menu_button("New Random Campaign", |ui| {
-            ui.text_edit_singleline(&mut self.random_campaign_name_entry);
-            ui.horizontal(|ui| {
-                ui.label("Level:");
-                ui.add(egui::Slider::new(
-                    &mut self.random_level,
-                    0.0..=self.class_cache_rc.borrow().get_classes().len().to_f64(),
-                ));
-            });
-            if ui.button("Create").clicked() {
-                let mut campaign = CampaignGui::new_refreshable(
-                    SaveWithPath::new(Save::new(self.random_campaign_name_entry.clone())),
-                    self.class_cache_rc.clone(),
-                );
-                self.random_campaign_name_entry.clear();
-                self.random_campaign(&mut campaign);
-                self.tree.push_to_first_leaf(campaign);
-            }
-        });
-        if self.tree.find_active().is_some() {
-            ui.menu_button("Randomize Campaign", |ui| {
-                ui.label("Level:");
-                ui.add(egui::Slider::new(
-                    &mut self.random_level,
-                    0.0..=self.class_cache_rc.borrow().get_classes().len().to_f64(),
-                ));
-                if ui.button("Randomize").clicked() {
-                    let mut new_gui = None;
-                    if let Some((_, campaign_gui)) = self.tree.find_active() {
-                        new_gui = Some(campaign_gui.clone());
-                    }
-                    if let Some(campaign_gui) = &mut new_gui {
-                        campaign_gui.clear_campaign();
-                        self.random_campaign(campaign_gui);
-                        if let Some((_, active_gui)) = self.tree.find_active() {
-                            *active_gui = campaign_gui.clone();
-                        }
-                    };
-                }
-            });
-        }
+
+        self.random_campaign_submenu(ui);
+
         if ui.button("Open").clicked() {
             self.open_campaign();
         }
@@ -275,6 +236,50 @@ impl GuiGreedApp {
 
         if self.tree.find_active_focused().is_some() && ui.button("Save As...").clicked() {
             self.save_as();
+        }
+    }
+
+    fn random_campaign_submenu(&mut self, ui: &mut egui::Ui) {
+        ui.menu_button("New Random Campaign", |ui| {
+            ui.text_edit_singleline(&mut self.random_campaign_name_entry);
+            ui.horizontal(|ui| {
+                ui.label("Level:");
+                ui.add(egui::Slider::new(
+                    &mut self.random_level,
+                    0.0..=self.class_cache_rc.borrow().get_classes().len().to_f64(),
+                ));
+            });
+            if ui.button("Create").clicked() {
+                let mut campaign = CampaignGui::new_refreshable(
+                    SaveWithPath::new(Save::new(self.random_campaign_name_entry.clone())),
+                    self.class_cache_rc.clone(),
+                );
+                self.random_campaign_name_entry.clear();
+                self.random_campaign(&mut campaign);
+                self.tree.push_to_first_leaf(campaign);
+            }
+        });
+        if self.tree.find_active().is_some() {
+            ui.menu_button("Randomize Campaign", |ui| {
+                ui.label("Level:");
+                ui.add(egui::Slider::new(
+                    &mut self.random_level,
+                    0.0..=self.class_cache_rc.borrow().get_classes().len().to_f64(),
+                ));
+                if ui.button("Randomize").clicked() {
+                    let mut new_gui = None;
+                    if let Some((_, campaign_gui)) = self.tree.find_active() {
+                        new_gui = Some(campaign_gui.clone());
+                    }
+                    if let Some(campaign_gui) = &mut new_gui {
+                        campaign_gui.clear_campaign();
+                        self.random_campaign(campaign_gui);
+                        if let Some((_, active_gui)) = self.tree.find_active() {
+                            *active_gui = campaign_gui.clone();
+                        }
+                    };
+                }
+            });
         }
     }
 
