@@ -10,7 +10,7 @@ use eframe::egui;
 use eframe::glow::Context;
 use eframe::Storage;
 use egui::emath::Numeric;
-use egui_dock::{Style, Tree};
+use egui_dock::{DockState, Style};
 use egui_notify::Toasts;
 use log::info;
 use rfd::{FileDialog, MessageDialog, MessageDialogResult};
@@ -61,7 +61,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ";
 
 pub struct GuiGreedApp {
-    tree: Tree<CampaignGui>,
+    dock_state: DockState<CampaignGui>,
     tab_viewer: CampaignTabViewer,
     app_state: AppState,
     new_campaign_name_entry: String,
@@ -111,10 +111,10 @@ impl GuiGreedApp {
             .iter_mut()
             .for_each(CampaignGui::refresh_campaign);
 
-        let tree = Tree::new(campaign_guis);
+        let dock_state = DockState::new(campaign_guis);
 
         GuiGreedApp {
-            tree,
+            dock_state,
             tab_viewer: CampaignTabViewer::new(),
             app_state,
             new_campaign_name_entry: String::new(),
@@ -144,7 +144,7 @@ impl GuiGreedApp {
                     self.campaign_menu(ui);
                 });
 
-                if self.tree.find_active().is_some() {
+                if self.dock_state.find_active_focused().is_some() {
                     if ui.button("Next Battle").clicked() {
                         self.perform_on_all_guis_mut(&CampaignGui::next_battle);
                     }
@@ -172,7 +172,7 @@ impl GuiGreedApp {
                 );
                 campaign_gui.refresh_campaign();
                 self.new_campaign_name_entry.clear();
-                self.tree.push_to_first_leaf(campaign_gui);
+                self.dock_state.push_to_first_leaf(campaign_gui);
             }
         });
 
@@ -210,7 +210,7 @@ impl GuiGreedApp {
             });
         }
 
-        if let Some((_, campaign_gui)) = self.tree.find_active_focused() {
+        if let Some((_, campaign_gui)) = self.dock_state.find_active_focused() {
             if ui.button("Save").clicked() {
                 info_log_and_notify(&mut self.toasts, "Attempting to save campaign!");
                 let open_file_picker = if campaign_gui.get_path().is_some() {
@@ -234,7 +234,7 @@ impl GuiGreedApp {
             }
         }
 
-        if self.tree.find_active_focused().is_some() && ui.button("Save As...").clicked() {
+        if self.dock_state.find_active_focused().is_some() && ui.button("Save As...").clicked() {
             self.save_as();
         }
     }
@@ -256,10 +256,10 @@ impl GuiGreedApp {
                 );
                 self.random_campaign_name_entry.clear();
                 self.random_campaign(&mut campaign);
-                self.tree.push_to_first_leaf(campaign);
+                self.dock_state.push_to_first_leaf(campaign);
             }
         });
-        if self.tree.find_active().is_some() {
+        if self.dock_state.find_active_focused().is_some() {
             ui.menu_button("Randomize Campaign", |ui| {
                 ui.label("Level:");
                 ui.add(egui::Slider::new(
@@ -268,13 +268,13 @@ impl GuiGreedApp {
                 ));
                 if ui.button("Randomize").clicked() {
                     let mut new_gui = None;
-                    if let Some((_, campaign_gui)) = self.tree.find_active() {
+                    if let Some((_, campaign_gui)) = self.dock_state.find_active_focused() {
                         new_gui = Some(campaign_gui.clone());
                     }
                     if let Some(campaign_gui) = &mut new_gui {
                         campaign_gui.clear_campaign();
                         self.random_campaign(campaign_gui);
-                        if let Some((_, active_gui)) = self.tree.find_active() {
+                        if let Some((_, active_gui)) = self.dock_state.find_active_focused() {
                             *active_gui = campaign_gui.clone();
                         }
                     };
@@ -318,7 +318,7 @@ impl GuiGreedApp {
                             );
                         }
                         info_log_and_notify(&mut self.toasts, "Campaign updated to new rules.");
-                        if let Some((_, campaign_gui)) = self.tree.find_active() {
+                        if let Some((_, campaign_gui)) = self.dock_state.find_active_focused() {
                             campaign_gui.refresh_campaign();
                         }
                     }
@@ -334,7 +334,7 @@ impl GuiGreedApp {
     }
 
     fn main_panel(&mut self, ctx: &egui::Context) {
-        egui_dock::DockArea::new(&mut self.tree)
+        egui_dock::DockArea::new(&mut self.dock_state)
             .style(Style::from_egui(ctx.style().as_ref()))
             .show(ctx, &mut self.tab_viewer);
     }
@@ -360,7 +360,7 @@ impl GuiGreedApp {
         dialog
             .save_file()
             .and_then(|picked_file| {
-                self.tree.find_active_focused().map(|(_, campaign)| {
+                self.dock_state.find_active_focused().map(|(_, campaign)| {
                     match campaign.save_to(picked_file.clone()) {
                         Ok(()) => {
                             info_log_and_notify(
@@ -414,23 +414,24 @@ impl GuiGreedApp {
     }
 
     fn open_new_save(&mut self, new_save_path: &OsString) {
-        let current_save_saved = if let Some((_, campaign_gui)) = self.tree.find_active() {
-            campaign_gui.save().map_or_else(
-                || true,
-                |result| {
-                    result
-                        .map_err(|err| {
-                            error_log_and_notify(
-                                &mut self.toasts,
-                                format!("Unable to save current save: {err}",),
-                            );
-                        })
-                        .is_ok()
-                },
-            )
-        } else {
-            true
-        };
+        let current_save_saved =
+            if let Some((_, campaign_gui)) = self.dock_state.find_active_focused() {
+                campaign_gui.save().map_or_else(
+                    || true,
+                    |result| {
+                        result
+                            .map_err(|err| {
+                                error_log_and_notify(
+                                    &mut self.toasts,
+                                    format!("Unable to save current save: {err}",),
+                                );
+                            })
+                            .is_ok()
+                    },
+                )
+            } else {
+                true
+            };
         if current_save_saved {
             if let Ok(new_save) = SaveWithPath::from_path(new_save_path).map_err(|err| {
                 error_log_and_notify(
@@ -444,14 +445,14 @@ impl GuiGreedApp {
                 let mut campaign_gui =
                     CampaignGui::new_refreshable(new_save, self.class_cache_rc.clone());
                 campaign_gui.refresh_campaign();
-                self.tree.push_to_first_leaf(campaign_gui);
+                self.dock_state.push_to_first_leaf(campaign_gui);
             }
         }
     }
 
     fn perform_on_all_guis_mut<T>(&mut self, gui_action: &dyn Fn(&mut CampaignGui) -> T) -> Vec<T> {
-        let mut results = Vec::with_capacity(self.tree.num_tabs());
-        for node in self.tree.iter_mut() {
+        let mut results = Vec::with_capacity(self.dock_state.main_surface().num_tabs());
+        for node in self.dock_state.main_surface_mut().iter_mut() {
             if let egui_dock::node::Node::Leaf { tabs, .. } = node {
                 for gui in tabs {
                     results.push(gui_action(gui));
