@@ -70,6 +70,8 @@ impl ClassPassive {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Class {
     name: String,
+    #[serde(default)]
+    level: Option<usize>,
     utilities: Vec<ClassUtility>,
     passives: Vec<ClassPassive>,
     primary_action: PrimaryAction,
@@ -90,6 +92,7 @@ impl Class {
     ) -> Class {
         Class {
             name: name.into(),
+            level: None,
             utilities,
             passives,
             primary_action,
@@ -127,6 +130,11 @@ impl Class {
         self.class_requirements
             .iter()
             .all(|class_requirement| current_class_names.contains(class_requirement))
+    }
+
+    #[allow(dead_code)]
+    pub fn get_level(&self) -> &Option<usize> {
+        &self.level
     }
 
     pub fn get_class_requirements(&self) -> &Vec<String> {
