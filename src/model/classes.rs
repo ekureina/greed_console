@@ -129,9 +129,15 @@ impl Class {
     }
 
     pub fn get_class_available(&self, current_class_names: &[String]) -> bool {
-        self.class_requirements
-            .iter()
-            .all(|class_requirement| current_class_names.contains(class_requirement))
+        if self.name == "Form of the Crab" {
+            current_class_names
+                .iter()
+                .any(|class_name| class_name.starts_with("Form of"))
+        } else {
+            self.class_requirements
+                .iter()
+                .all(|class_requirement| current_class_names.contains(class_requirement))
+        }
     }
 
     #[allow(dead_code)]
