@@ -257,10 +257,6 @@ fn get_origin(
             .iter()
             .zip(passive_descriptions)
             .map(|(name, description)| ClassPassive::new(name, description));
-        println!(
-            "Passives: {:?}",
-            passives.clone().collect::<Vec<ClassPassive>>()
-        );
         let primary_name = paragraphs
             .next()
             .ok_or(GetOriginsAndClassesError::OriginParse)?
