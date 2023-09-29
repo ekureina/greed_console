@@ -32,6 +32,7 @@ mod cli;
 mod google;
 mod gui;
 mod model;
+mod util;
 
 fn main() {
     env_logger::init();

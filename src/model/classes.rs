@@ -81,8 +81,10 @@ pub struct Class {
 }
 
 impl Class {
+    #[allow(clippy::too_many_arguments)]
     pub fn new<N: Into<String>>(
         name: N,
+        level: Option<usize>,
         utilities: Vec<ClassUtility>,
         passives: Vec<ClassPassive>,
         primary_action: PrimaryAction,
@@ -92,7 +94,7 @@ impl Class {
     ) -> Class {
         Class {
             name: name.into(),
-            level: None,
+            level,
             utilities,
             passives,
             primary_action,

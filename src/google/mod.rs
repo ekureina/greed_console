@@ -1,5 +1,6 @@
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 use crate::model::classes::{Class, ClassCache, ClassPassive, ClassUtility};
+use crate::util::from_roman;
 
 use google_docs1::api::Document;
 use google_docs1::oauth2::{self, ServiceAccountAuthenticator};
@@ -66,9 +67,14 @@ fn get_class(
     first_line: &str,
     mut paragraphs: impl Iterator<Item = String>,
 ) -> Result<Class, GetOriginsAndClassesError> {
-    let class_name = first_line.split('(').collect::<Vec<&str>>()[0]
-        .trim()
-        .to_string();
+    let class_components = first_line.split('(').collect::<Vec<&str>>();
+    let class_name = class_components[0].trim().to_owned();
+    let class_level = if class_components.len() > 1 {
+        from_roman(class_components[1].split(')').collect::<Vec<&str>>()[0].trim())
+    } else {
+        None
+    };
+
     let class_requirements = if first_line.contains("Req:") {
         first_line.split("Req:").collect::<Vec<&str>>()[1]
             .trim()
@@ -169,6 +175,7 @@ fn get_class(
         .to_owned();
     Ok(Class::new(
         class_name,
+        class_level,
         utilities.collect(),
         passives.collect(),
         PrimaryAction::new(primary_name, primary_description),
@@ -187,6 +194,7 @@ fn get_origin(
     if origin_name == "Human" {
         Ok(Class::new(
             String::from("Human"),
+            None,
             vec![ClassUtility::new(String::new(), String::new())],
             vec![ClassPassive::new(String::new(), String::new())],
             PrimaryAction::new(String::new(), String::new()),
@@ -288,6 +296,7 @@ fn get_origin(
             .to_owned();
         Ok(Class::new(
             origin_name,
+            None,
             utilities.collect(),
             passives.collect(),
             PrimaryAction::new(primary_name, primary_description),
