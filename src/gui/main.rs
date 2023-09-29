@@ -13,7 +13,7 @@ use egui::emath::Numeric;
 use egui_dock::{Style, Tree};
 use egui_notify::Toasts;
 use log::info;
-use rfd::FileDialog;
+use rfd::{FileDialog, MessageDialog, MessageDialogResult};
 use tokio::join;
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
@@ -69,8 +69,6 @@ pub struct GuiGreedApp {
     class_cache_rc: Rc<RefCell<ClassCache>>,
     rule_refresh_runtime: Runtime,
     rule_refresh_handle: RefCell<Option<JoinHandle<Result<ClassCache, GetOriginsAndClassesError>>>>,
-    show_save_on_quit_dialog: bool,
-    allowed_to_quit: bool,
     toasts: Toasts,
     random_level: f64,
 }
@@ -124,8 +122,6 @@ impl GuiGreedApp {
             class_cache_rc,
             rule_refresh_runtime,
             rule_refresh_handle: RefCell::new(None),
-            show_save_on_quit_dialog: false,
-            allowed_to_quit: false,
             toasts,
             random_level: 0.0,
         }
@@ -253,7 +249,7 @@ impl GuiGreedApp {
             });
         }
 
-        if let Some((_, campaign_gui)) = self.tree.find_active() {
+        if let Some((_, campaign_gui)) = self.tree.find_active_focused() {
             if ui.button("Save").clicked() {
                 info_log_and_notify(&mut self.toasts, "Attempting to save campaign!");
                 let open_file_picker = if campaign_gui.get_path().is_some() {
@@ -277,7 +273,7 @@ impl GuiGreedApp {
             }
         }
 
-        if self.tree.find_active().is_some() && ui.button("Save As...").clicked() {
+        if self.tree.find_active_focused().is_some() && ui.button("Save As...").clicked() {
             self.save_as();
         }
     }
@@ -359,15 +355,18 @@ impl GuiGreedApp {
         dialog
             .save_file()
             .and_then(|picked_file| {
-                self.tree.find_active().map(|(_, campaign_gui)| {
-                    match campaign_gui.save_to(picked_file.clone()) {
+                self.tree.find_active_focused().map(|(_, campaign)| {
+                    match campaign.save_to(picked_file.clone()) {
                         Ok(()) => {
-                            info!(
-                                "Successfully saved file to {}",
-                                picked_file.to_string_lossy()
+                            info_log_and_notify(
+                                &mut self.toasts,
+                                format!(
+                                    "Successfully saved file to {}",
+                                    picked_file.to_string_lossy()
+                                ),
                             );
 
-                            if let Some(path) = campaign_gui.set_path(picked_file) {
+                            if let Some(path) = campaign.set_path(picked_file) {
                                 self.app_state.add_new_path_to_history(path);
                             }
                             true
@@ -514,64 +513,6 @@ impl eframe::App for GuiGreedApp {
         self.menu_panel(ctx, frame);
 
         self.main_panel(ctx);
-
-        if self.show_save_on_quit_dialog {
-            egui::Window::new("Save Campaigns?")
-                .collapsible(false)
-                .resizable(false)
-                .show(ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        if ui.button("Cancel").clicked() {
-                            self.show_save_on_quit_dialog = false;
-                        }
-
-                        if ui.button("Save").clicked() {
-                            self.allowed_to_quit = true;
-                            let mut tabs_to_close = vec![];
-                            for campaign_gui in self.tree.tabs() {
-                                if let Some(result) = campaign_gui.save() {
-                                    match result {
-                                        Err(err) => {
-                                            error_log_and_notify(
-                                                &mut self.toasts,
-                                                format!("Error when saving file: {err}"),
-                                            );
-                                            self.allowed_to_quit = false;
-                                        }
-                                        Ok(_) => {
-                                            tabs_to_close
-                                                .push(campaign_gui.get_save().get_campaign_name());
-                                        }
-                                    }
-                                } else {
-                                    self.allowed_to_quit = false;
-                                    error_log_and_notify(
-                                        &mut self.toasts,
-                                        format!(
-                                            "No Save file for campaign: {}",
-                                            campaign_gui.get_save().get_campaign_name()
-                                        ),
-                                    );
-                                }
-                            }
-
-                            self.tab_viewer.set_tabs_to_close(tabs_to_close);
-
-                            if self.allowed_to_quit {
-                                frame.close();
-                            } else {
-                                self.save_as();
-                                self.show_save_on_quit_dialog = false;
-                            }
-                        }
-
-                        if ui.button("Quit").clicked() {
-                            self.allowed_to_quit = true;
-                            frame.close();
-                        }
-                    });
-                });
-        }
     }
 
     fn save(&mut self, storage: &mut dyn Storage) {
@@ -587,14 +528,50 @@ impl eframe::App for GuiGreedApp {
     }
 
     fn on_close_event(&mut self) -> bool {
-        for campaign_gui in self.tree.tabs() {
-            if campaign_gui.save_is_dirty() {
-                self.show_save_on_quit_dialog = true;
-                return self.allowed_to_quit;
-            }
-        }
+        let tabs_to_close = Rc::new(RefCell::new(Vec::new()));
+        let tabs_to_close_clone = tabs_to_close.clone();
+        let campaign_results =
+            self.perform_on_all_guis_mut(&move |campaign_gui: &mut CampaignGui| {
+                if campaign_gui.save_is_dirty() {
+                    match MessageDialog::new()
+                        .set_level(rfd::MessageLevel::Info)
+                        .set_title("Save Campaign?")
+                        .set_buttons(rfd::MessageButtons::YesNoCancel)
+                        .show()
+                    {
+                        MessageDialogResult::Yes => {
+                            if campaign_gui.get_path().is_some() {
+                                campaign_gui.save();
+                                tabs_to_close_clone
+                                    .borrow_mut()
+                                    .push(campaign_gui.get_save().get_campaign_name());
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        MessageDialogResult::No => {
+                            tabs_to_close_clone
+                                .borrow_mut()
+                                .push(campaign_gui.get_save().get_campaign_name());
+                            true
+                        }
+                        MessageDialogResult::Cancel => false,
+                        _ => {
+                            unreachable!()
+                        }
+                    }
+                } else {
+                    tabs_to_close_clone
+                        .borrow_mut()
+                        .push(campaign_gui.get_save().get_campaign_name());
+                    true
+                }
+            });
 
-        true
+        self.tab_viewer.set_tabs_to_close(&tabs_to_close.borrow());
+
+        campaign_results.is_empty() || !campaign_results.iter().any(|result| !result)
     }
 
     fn on_exit(&mut self, _gl: Option<&Context>) {

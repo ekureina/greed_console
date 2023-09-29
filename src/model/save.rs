@@ -137,7 +137,7 @@ impl Default for Save {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct SaveWithPath {
     path: Option<OsString>,
     save: Save,

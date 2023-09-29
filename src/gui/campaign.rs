@@ -9,7 +9,7 @@ use crate::model::{
 
 use super::widgets::panels::StatsPanel;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CampaignGui {
     game_state: GameState,
     current_save: SaveWithPath,

@@ -10,8 +10,8 @@ impl CampaignTabViewer {
         CampaignTabViewer::default()
     }
 
-    pub fn set_tabs_to_close(&mut self, tabs: Vec<String>) {
-        self.tabs_to_force_close = tabs;
+    pub fn set_tabs_to_close(&mut self, tabs: &[String]) {
+        self.tabs_to_force_close = tabs.to_vec();
     }
 }
 

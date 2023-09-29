@@ -22,7 +22,7 @@ use std::fmt::{self, Formatter, Result};
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GameState {
     round_num: u8,
     turn_side: TurnSide,
@@ -274,7 +274,7 @@ impl GameState {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TurnSide {
     PlayerSide,
     OpposingSide,
@@ -289,7 +289,7 @@ impl fmt::Display for TurnSide {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 struct Stat {
     base: i8,
     turn_mod: i8,
