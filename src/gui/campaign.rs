@@ -446,10 +446,7 @@ impl CampaignGui {
 
         let mut subclasses = vec![];
         for remaining_class in &self.character_classes {
-            if remaining_class
-                .get_class_requirements()
-                .contains(&class.get_name())
-            {
+            if !remaining_class.get_class_available(&self.character_classes) {
                 subclasses.push(remaining_class.clone());
             }
         }

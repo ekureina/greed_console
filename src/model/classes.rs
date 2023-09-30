@@ -3,6 +3,8 @@ use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
+use std::any::Any;
+
 /*
  * A console and digital character sheet for campaigns under the greed ruleset.
  * Copyright (C) 2023 Claire Moore
@@ -67,7 +69,7 @@ impl ClassPassive {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct Class {
     name: String,
     #[serde(default)]
@@ -77,7 +79,7 @@ pub struct Class {
     primary_action: PrimaryAction,
     secondary_action: SecondaryAction,
     special_action: SpecialAction,
-    class_requirements: Vec<String>,
+    class_requirements: Option<Box<dyn ClassRequirement>>,
 }
 
 impl Class {
@@ -90,7 +92,7 @@ impl Class {
         primary_action: PrimaryAction,
         secondary_action: SecondaryAction,
         special_action: SpecialAction,
-        class_requirements: Vec<String>,
+        class_requirements: Option<Box<dyn ClassRequirement>>,
     ) -> Class {
         Class {
             name: name.into(),
@@ -134,26 +136,112 @@ impl Class {
                 .iter()
                 .any(|class| class.get_name().starts_with("Form of"))
         } else {
-            self.class_requirements.iter().all(|class_requirement| {
-                current_classes
-                    .iter()
-                    .map(Class::get_name)
-                    .collect::<Vec<String>>()
-                    .contains(class_requirement)
-            })
+            match &self.class_requirements {
+                Some(requirements) => requirements.meets_requirement(current_classes),
+                None => true,
+            }
         }
     }
 
     pub fn get_level(&self) -> &Option<usize> {
         &self.level
     }
+}
 
-    pub fn get_class_requirements(&self) -> &Vec<String> {
-        &self.class_requirements
+#[typetag::serde]
+pub trait ClassRequirement: std::fmt::Debug + std::marker::Send {
+    fn meets_requirement(&self, current_classes: &[Class]) -> bool;
+    fn clone_dyn(&self) -> Box<dyn ClassRequirement>;
+    #[allow(clippy::borrowed_box)]
+    fn partial_eq_dyn(&self, other: &Box<dyn ClassRequirement>) -> bool;
+}
+
+impl Clone for Box<dyn ClassRequirement> {
+    fn clone(&self) -> Box<dyn ClassRequirement> {
+        self.clone_dyn()
+    }
+}
+
+impl PartialEq for Box<dyn ClassRequirement> {
+    fn eq(&self, other: &Box<dyn ClassRequirement>) -> bool {
+        self.partial_eq_dyn(other)
     }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct SuperClassRequirement {
+    class_name: String,
+}
+
+#[typetag::serde]
+impl ClassRequirement for SuperClassRequirement {
+    fn meets_requirement(&self, current_classes: &[Class]) -> bool {
+        current_classes
+            .iter()
+            .map(Class::get_name)
+            .any(|current_class_name| current_class_name == self.class_name)
+    }
+
+    fn clone_dyn(&self) -> Box<dyn ClassRequirement> {
+        Box::new(self.clone())
+    }
+
+    fn partial_eq_dyn(&self, other: &Box<dyn ClassRequirement>) -> bool {
+        if <dyn Any>::is::<&Self>(other) {
+            self.eq((other as &dyn Any).downcast_ref().unwrap())
+        } else {
+            false
+        }
+    }
+}
+
+impl SuperClassRequirement {
+    pub fn new(class_name: impl Into<String>) -> Self {
+        SuperClassRequirement {
+            class_name: class_name.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AndClassRequirement {
+    left: Box<dyn ClassRequirement>,
+    right: Box<dyn ClassRequirement>,
+}
+
+impl PartialEq for AndClassRequirement {
+    fn eq(&self, other: &Self) -> bool {
+        self.left.eq(&other.left) && self.right.eq(&other.right)
+    }
+}
+
+#[typetag::serde]
+impl ClassRequirement for AndClassRequirement {
+    fn meets_requirement(&self, current_classes: &[Class]) -> bool {
+        self.left.meets_requirement(current_classes)
+            && self.right.meets_requirement(current_classes)
+    }
+
+    fn clone_dyn(&self) -> Box<dyn ClassRequirement> {
+        Box::new(self.clone())
+    }
+
+    fn partial_eq_dyn(&self, other: &Box<dyn ClassRequirement>) -> bool {
+        if <dyn Any>::is::<&Self>(other) {
+            self.eq((other as &dyn Any).downcast_ref().unwrap())
+        } else {
+            false
+        }
+    }
+}
+
+impl AndClassRequirement {
+    pub fn new(left: Box<dyn ClassRequirement>, right: Box<dyn ClassRequirement>) -> Self {
+        AndClassRequirement { left, right }
+    }
+}
+
+#[derive(Debug, PartialEq, Default, Deserialize, Serialize)]
 pub struct ClassCache {
     origins: IndexMap<String, Class>,
     classes: IndexMap<String, Class>,

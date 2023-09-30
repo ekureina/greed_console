@@ -1,5 +1,8 @@
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
-use crate::model::classes::{Class, ClassCache, ClassPassive, ClassUtility};
+use crate::model::classes::{
+    AndClassRequirement, Class, ClassCache, ClassPassive, ClassRequirement, ClassUtility,
+    SuperClassRequirement,
+};
 use crate::util::from_roman;
 
 use google_docs1::api::Document;
@@ -76,15 +79,11 @@ fn get_class(
     };
 
     let class_requirements = if first_line.contains("Req:") {
-        first_line.split("Req:").collect::<Vec<&str>>()[1]
-            .trim()
-            .split(',')
-            .collect::<Vec<&str>>()
-            .into_iter()
-            .map(|requirement_class| requirement_class.trim().to_string())
-            .collect()
+        Some(determine_class_requirements(
+            first_line.split("Req:").collect::<Vec<&str>>()[1].trim(),
+        ))
     } else {
-        vec![]
+        None
     };
 
     paragraphs
@@ -185,6 +184,20 @@ fn get_class(
     ))
 }
 
+fn determine_class_requirements(line: &str) -> Box<dyn ClassRequirement> {
+    if let Some(index) = line.find(',') {
+        let (first, second) = line.split_at(index);
+        let first_requirement = Box::new(SuperClassRequirement::new(first));
+        let second_requirement = determine_class_requirements(second.get(1..).unwrap());
+        Box::new(AndClassRequirement::new(
+            first_requirement,
+            second_requirement,
+        ))
+    } else {
+        Box::new(SuperClassRequirement::new(line))
+    }
+}
+
 #[allow(let_underscore_drop, clippy::too_many_lines)]
 fn get_origin(
     first_line: &str,
@@ -200,7 +213,7 @@ fn get_origin(
             PrimaryAction::new(String::new(), String::new()),
             SecondaryAction::new(String::new(), String::new()),
             SpecialAction::new(String::new(), String::new()),
-            vec![],
+            None,
         ))
     } else {
         paragraphs
@@ -298,7 +311,7 @@ fn get_origin(
             PrimaryAction::new(primary_name, primary_description),
             SecondaryAction::new(secondary_name, secondary_description),
             SpecialAction::new(special_name, special_description),
-            vec![],
+            None,
         ))
     }
 }
