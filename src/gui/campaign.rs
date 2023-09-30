@@ -359,7 +359,11 @@ impl CampaignGui {
                 let mut classes_to_add = vec![];
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     for class in self.class_cache.borrow().get_classes() {
-                        if !self.character_classes.contains(class)
+                        if !self
+                            .character_classes
+                            .iter()
+                            .map(Class::get_name)
+                            .any(|class_name| class_name == class.get_name())
                             && class.get_class_available(&self.character_classes)
                         {
                             let class_label = class.get_name()

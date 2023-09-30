@@ -131,15 +131,9 @@ impl Class {
     }
 
     pub fn get_class_available(&self, current_classes: &[Class]) -> bool {
-        if self.name == "Form of the Crab" {
-            current_classes
-                .iter()
-                .any(|class| class.get_name().starts_with("Form of"))
-        } else {
-            match &self.class_requirements {
-                Some(requirements) => requirements.meets_requirement(current_classes),
-                None => true,
-            }
+        match &self.class_requirements {
+            Some(requirements) => requirements.meets_requirement(current_classes),
+            None => true,
         }
     }
 
@@ -238,6 +232,45 @@ impl ClassRequirement for AndClassRequirement {
 impl AndClassRequirement {
     pub fn new(left: Box<dyn ClassRequirement>, right: Box<dyn ClassRequirement>) -> Self {
         AndClassRequirement { left, right }
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+pub struct LevelPrefixRequirement {
+    level: usize,
+    prefix: String,
+}
+
+#[typetag::serde]
+impl ClassRequirement for LevelPrefixRequirement {
+    fn meets_requirement(&self, current_classes: &[Class]) -> bool {
+        current_classes.iter().any(|current_class| {
+            current_class
+                .get_level()
+                .is_some_and(|level| level >= self.level)
+                && current_class.get_name().starts_with(&self.prefix)
+        })
+    }
+
+    fn clone_dyn(&self) -> Box<dyn ClassRequirement> {
+        Box::new(self.clone())
+    }
+
+    fn partial_eq_dyn(&self, other: &Box<dyn ClassRequirement>) -> bool {
+        if <dyn Any>::is::<&Self>(other) {
+            self.eq((other as &dyn Any).downcast_ref().unwrap())
+        } else {
+            false
+        }
+    }
+}
+
+impl LevelPrefixRequirement {
+    pub fn new(level: usize, prefix: impl Into<String>) -> Self {
+        LevelPrefixRequirement {
+            level,
+            prefix: prefix.into(),
+        }
     }
 }
 

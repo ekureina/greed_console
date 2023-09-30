@@ -1,7 +1,7 @@
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 use crate::model::classes::{
     AndClassRequirement, Class, ClassCache, ClassPassive, ClassRequirement, ClassUtility,
-    SuperClassRequirement,
+    LevelPrefixRequirement, SuperClassRequirement,
 };
 use crate::util::from_roman;
 
@@ -187,12 +187,17 @@ fn get_class(
 fn determine_class_requirements(line: &str) -> Box<dyn ClassRequirement> {
     if let Some(index) = line.find(',') {
         let (first, second) = line.split_at(index);
-        let first_requirement = Box::new(SuperClassRequirement::new(first));
+        let first_requirement = determine_class_requirements(first);
         let second_requirement = determine_class_requirements(second.get(1..).unwrap());
         Box::new(AndClassRequirement::new(
             first_requirement,
             second_requirement,
         ))
+    } else if let Some(index) = line.find("Any Level") {
+        let info = line.get((index + "Any Level".len())..).unwrap().trim();
+        let level = from_roman(info.split_whitespace().collect::<Vec<&str>>()[0]);
+        let start_name = info.split('"').collect::<Vec<&str>>()[1];
+        Box::new(LevelPrefixRequirement::new(level.unwrap_or(0), start_name))
     } else {
         Box::new(SuperClassRequirement::new(line))
     }
