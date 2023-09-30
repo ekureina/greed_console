@@ -165,7 +165,7 @@ impl GuiGreedApp {
         ui.set_min_width(200.0);
         ui.menu_button("New", |ui| {
             ui.text_edit_singleline(&mut self.new_campaign_name_entry);
-            if ui.button("Create").clicked() {
+            if !self.new_campaign_name_entry.is_empty() && ui.button("Create").clicked() {
                 let mut campaign_gui = CampaignGui::new_refreshable(
                     SaveWithPath::new(Save::new(self.new_campaign_name_entry.clone())),
                     self.class_cache_rc.clone(),
@@ -249,7 +249,7 @@ impl GuiGreedApp {
                     0.0..=self.class_cache_rc.borrow().get_classes().len().to_f64(),
                 ));
             });
-            if ui.button("Create").clicked() {
+            if !self.random_campaign_name_entry.is_empty() && ui.button("Create").clicked() {
                 let mut campaign = CampaignGui::new_refreshable(
                     SaveWithPath::new(Save::new(self.random_campaign_name_entry.clone())),
                     self.class_cache_rc.clone(),
