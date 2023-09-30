@@ -144,7 +144,6 @@ impl Class {
         }
     }
 
-    #[allow(dead_code)]
     pub fn get_level(&self) -> &Option<usize> {
         &self.level
     }

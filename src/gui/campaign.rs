@@ -361,9 +361,15 @@ impl CampaignGui {
                     for class in self.class_cache.borrow().get_classes() {
                         if !self.character_classes.contains(class)
                             && class.get_class_available(&self.character_classes)
-                            && ui.button(class.get_name()).clicked()
                         {
-                            classes_to_add.push(class.clone());
+                            let class_label = class.get_name()
+                                + &(match class.get_level() {
+                                    Some(level) => format!(" (Level {level})"),
+                                    None => String::new(),
+                                });
+                            if ui.button(class_label).clicked() {
+                                classes_to_add.push(class.clone());
+                            }
                         }
                     }
                 });
@@ -376,7 +382,12 @@ impl CampaignGui {
             ui.menu_button("Remove", |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     for class in self.character_classes.clone() {
-                        if ui.button(class.get_name()).clicked() {
+                        let class_label = class.get_name()
+                            + &(match class.get_level() {
+                                Some(level) => format!(" (Level {level})"),
+                                None => String::new(),
+                            });
+                        if ui.button(class_label).clicked() {
                             self.remove_class(&class);
                         }
                     }
