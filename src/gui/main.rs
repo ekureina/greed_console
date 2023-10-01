@@ -546,7 +546,24 @@ impl eframe::App for GuiGreedApp {
                                     .push(campaign_gui.get_save().get_campaign_name());
                                 true
                             } else {
-                                false
+                                let dialog = FileDialog::new();
+                                #[cfg(any(target_os = "windows", target_os = "linux"))]
+                                let dialog = dialog
+                                    .set_title("Save Campaign As")
+                                    .add_filter("Greed Campaign", &["ron"]);
+                                if let Some(picked_file) = dialog.save_file() {
+                                    campaign_gui.set_path(picked_file);
+                                    if campaign_gui.save().is_some_and(|result| result.is_ok()) {
+                                        tabs_to_close_clone
+                                            .borrow_mut()
+                                            .push(campaign_gui.get_save().get_campaign_name());
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                } else {
+                                    false
+                                }
                             }
                         }
                         MessageDialogResult::No => {
