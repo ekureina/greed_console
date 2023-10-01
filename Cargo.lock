@@ -1730,6 +1730,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "typetag",
+ "webbrowser",
 ]
 
 [[package]]

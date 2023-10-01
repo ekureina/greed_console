@@ -156,7 +156,7 @@ impl GuiGreedApp {
 
                 self.refresh_rules(ui, frame);
 
-                ui.hyperlink_to("Greed Rulset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
+                ui.hyperlink_to("Greed Ruleset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
             });
         });
     }

@@ -4,9 +4,10 @@ use crate::model::classes::{
     LevelPrefixRequirement, SuperClassRequirement,
 };
 use crate::util::from_roman;
+use std::path::Path;
 
 use google_docs1::api::Document;
-use google_docs1::oauth2::{self, ServiceAccountAuthenticator};
+use google_docs1::oauth2::{self, InstalledFlowAuthenticator};
 use google_docs1::{hyper, hyper_rustls, Docs};
 use google_drive3::DriveHub;
 use log::info;
@@ -30,22 +31,36 @@ use thiserror::Error;
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-fn get_creds() -> std::io::Result<oauth2::ServiceAccountKey> {
-    oauth2::parse_service_account_key(include_bytes!("../../credentials.json"))
+fn get_creds() -> std::io::Result<oauth2::ApplicationSecret> {
+    oauth2::parse_application_secret(include_bytes!("../../credentials.json"))
 }
 
-async fn get_authenticator() -> std::io::Result<
+async fn get_authenticator() -> Result<
     oauth2::authenticator::Authenticator<
         hyper_rustls::HttpsConnector<hyper::client::HttpConnector>,
     >,
+    AuthenticatorError,
 > {
     let creds = get_creds()?;
 
-    ServiceAccountAuthenticator::builder(creds).build().await
+    let auth =
+        InstalledFlowAuthenticator::builder(creds, oauth2::InstalledFlowReturnMethod::HTTPRedirect)
+            .flow_delegate(Box::new(WebbrowserFlowDelegate))
+            .persist_tokens_to_disk(
+                Path::new(&eframe::storage_dir("Greed Console").unwrap()).join("oauth2"),
+            )
+            .build()
+            .await?;
+    let scopes = &[
+        google_docs1::api::Scope::DocumentReadonly.as_ref(),
+        google_drive3::api::Scope::MetadataReadonly.as_ref(),
+    ];
+    auth.token(scopes).await.unwrap();
+    Ok(auth)
 }
 
 async fn get_document() -> Result<google_docs1::api::Document, GetOriginsAndClassesError> {
-    let sa = get_authenticator().await?;
+    let auth = get_authenticator().await?;
 
     let hub = Docs::new(
         hyper::Client::builder().build(
@@ -56,7 +71,7 @@ async fn get_document() -> Result<google_docs1::api::Document, GetOriginsAndClas
                 .enable_http2()
                 .build(),
         ),
-        sa,
+        auth,
     );
 
     Ok(hub
@@ -407,7 +422,7 @@ pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClasse
 }
 
 pub async fn get_update_time() -> Result<Option<i64>, GetUpdateTimeError> {
-    let sa = get_authenticator().await?;
+    let auth = get_authenticator().await?;
 
     let hub = DriveHub::new(
         hyper::Client::builder().build(
@@ -418,7 +433,7 @@ pub async fn get_update_time() -> Result<Option<i64>, GetUpdateTimeError> {
                 .enable_http2()
                 .build(),
         ),
-        sa,
+        auth,
     );
 
     let timestamp = hub
@@ -436,8 +451,8 @@ pub async fn get_update_time() -> Result<Option<i64>, GetUpdateTimeError> {
 
 #[derive(Debug, Error)]
 pub enum GetOriginsAndClassesError {
-    #[error("IO error when getting origins and classes: {0}")]
-    Io(#[from] std::io::Error),
+    #[error("Error getting authenticator: {0}")]
+    Authenticator(#[from] AuthenticatorError),
     #[error("Error in the Google Client: {0}")]
     Google(#[from] google_docs1::Error),
     #[error("Missing rules document")]
@@ -454,8 +469,33 @@ pub enum GetOriginsAndClassesError {
 
 #[derive(Debug, Error)]
 pub enum GetUpdateTimeError {
-    #[error("IO error when getting Update Time: {0}")]
-    Io(#[from] std::io::Error),
+    #[error("Error getting authenticator: {0}")]
+    Authenticator(#[from] AuthenticatorError),
     #[error("Error in the Google Client: {0}")]
     Google(#[from] google_drive3::Error),
+}
+
+#[derive(Debug, Error)]
+pub enum AuthenticatorError {
+    #[error("IO error when getting Authenticator: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Error in the Oauth2 process: {0}")]
+    Oauth2(#[from] google_docs1::oauth2::Error),
+}
+
+#[derive(Debug, Clone)]
+struct WebbrowserFlowDelegate;
+
+impl oauth2::authenticator_delegate::InstalledFlowDelegate for WebbrowserFlowDelegate {
+    fn present_user_url<'a>(
+        &'a self,
+        url: &'a str,
+        _need_code: bool,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, String>> + Send + 'a>>
+    {
+        Box::pin(async {
+            webbrowser::open(url).map_err(|err| err.to_string())?;
+            Ok(String::new())
+        })
+    }
 }
