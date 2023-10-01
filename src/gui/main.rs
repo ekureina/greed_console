@@ -290,43 +290,37 @@ impl GuiGreedApp {
                     .spawn(crate::google::get_origins_and_classes()),
             ));
         }
-        if self.rule_refresh_handle.borrow().is_some() {
-            info!("Refreshing rules!");
-            if self
+        if self.rule_refresh_handle.borrow().is_some()
+            && self
                 .rule_refresh_handle
                 .borrow()
                 .as_ref()
                 .unwrap()
                 .is_finished()
+        {
+            info_log_and_notify(&mut self.toasts, "Rules refreshed...");
+            let refresh_handle = self.rule_refresh_handle.replace(None);
+            match self
+                .rule_refresh_runtime
+                .block_on(async { join!(refresh_handle.unwrap()) })
+                .0
+                .unwrap()
             {
-                info_log_and_notify(&mut self.toasts, "Rules refreshed...");
-                let refresh_handle = self.rule_refresh_handle.replace(None);
-                match self
-                    .rule_refresh_runtime
-                    .block_on(async { join!(refresh_handle.unwrap()) })
-                    .0
-                    .unwrap()
-                {
-                    Ok(class_cache) => {
-                        *self.class_cache_rc.borrow_mut() = class_cache;
-                        if let Some(storage) = frame.storage_mut() {
-                            eframe::set_value(
-                                storage,
-                                "class_cache",
-                                &*self.class_cache_rc.borrow(),
-                            );
-                        }
-                        info_log_and_notify(&mut self.toasts, "Campaign updated to new rules.");
-                        if let Some((_, campaign_gui)) = self.dock_state.find_active_focused() {
-                            campaign_gui.refresh_campaign();
-                        }
+                Ok(class_cache) => {
+                    *self.class_cache_rc.borrow_mut() = class_cache;
+                    if let Some(storage) = frame.storage_mut() {
+                        eframe::set_value(storage, "class_cache", &*self.class_cache_rc.borrow());
                     }
-                    Err(err) => {
-                        error_log_and_notify(
-                            &mut self.toasts,
-                            format!("Error refreshing rules: {err}"),
-                        );
+                    info_log_and_notify(&mut self.toasts, "Campaign updated to new rules.");
+                    if let Some((_, campaign_gui)) = self.dock_state.find_active_focused() {
+                        campaign_gui.refresh_campaign();
                     }
+                }
+                Err(err) => {
+                    error_log_and_notify(
+                        &mut self.toasts,
+                        format!("Error refreshing rules: {err}"),
+                    );
                 }
             }
         }
