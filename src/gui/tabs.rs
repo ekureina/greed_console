@@ -1,3 +1,5 @@
+use rfd::{FileDialog, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
+
 use super::campaign::CampaignGui;
 
 #[derive(Default, Debug, PartialEq, PartialOrd, Ord, Eq)]
@@ -40,7 +42,34 @@ impl egui_dock::TabViewer for CampaignTabViewer {
     }
 
     fn on_close(&mut self, tab: &mut Self::Tab) -> bool {
-        tab.save().is_some_and(|result| result.is_ok())
+        if tab.save_is_dirty() {
+            match MessageDialog::new()
+                .set_level(MessageLevel::Info)
+                .set_title("Save Campaign?")
+                .set_buttons(MessageButtons::YesNo)
+                .show()
+            {
+                MessageDialogResult::Yes => match tab.get_path() {
+                    Some(_) => tab.save().is_some_and(|result| result.is_ok()),
+                    None => {
+                        let dialog = FileDialog::new();
+                        #[cfg(any(target_os = "windows", target_os = "linux"))]
+                        let dialog = dialog
+                            .set_title("Save Campaign As")
+                            .add_filter("Greed Campaign", &["ron"]);
+                        if let Some(picked_file) = dialog.save_file() {
+                            tab.set_path(picked_file);
+                            tab.save().is_some_and(|result| result.is_ok())
+                        } else {
+                            false
+                        }
+                    }
+                },
+                _ => false,
+            }
+        } else {
+            true
+        }
     }
 
     fn force_close(&mut self, tab: &mut Self::Tab) -> bool {
