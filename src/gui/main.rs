@@ -14,6 +14,7 @@ use egui_dock::{DockState, Style};
 use egui_notify::Toasts;
 use log::info;
 use rfd::{FileDialog, MessageDialog, MessageDialogResult};
+use self_update::cargo_crate_version;
 use tokio::join;
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
@@ -132,6 +133,7 @@ impl GuiGreedApp {
                 }
                 egui::popup_below_widget(ui, about_popup_id, &about_response, |ui| {
                     ui.set_min_width(450.0);
+                    ui.label(format!("Greed Console Version {}", cargo_crate_version!()));
                     ui.label(COPYRIGHT_NOTICE);
                 });
 
