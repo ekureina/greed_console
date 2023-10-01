@@ -29,6 +29,7 @@ use eframe::NativeOptions;
 use log::{error, info};
 use model::classes::ClassCache;
 use rfd::{MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
+use self_update::cargo_crate_version;
 
 mod cli;
 mod google;
@@ -38,6 +39,10 @@ mod util;
 
 fn main() {
     env_logger::init();
+
+    if update_app() {
+        return;
+    }
 
     let args = Args::parse();
 
@@ -104,4 +109,62 @@ fn main() {
         }),
     )
     .unwrap();
+}
+
+fn update_app() -> bool {
+    match self_update::backends::github::Update::configure()
+        .no_confirm(true)
+        .repo_owner("ekureina")
+        .repo_name("greed_console")
+        .current_version(cargo_crate_version!())
+        .bin_name("greed_console")
+        .show_output(false)
+        .build()
+    {
+        Ok(update) => match update.get_latest_release() {
+            Ok(release) => {
+                if self_update::version::bump_is_greater(cargo_crate_version!(), &release.version)
+                    .unwrap_or(false)
+                {
+                    match MessageDialog::new()
+                        .set_level(rfd::MessageLevel::Info)
+                        .set_title(format!(
+                            "New version found: ({}). Update to latest version?",
+                            release.version
+                        ))
+                        .set_buttons(rfd::MessageButtons::YesNo)
+                        .show()
+                    {
+                        MessageDialogResult::Yes => match update.update_extended() {
+                            Ok(_) => {
+                                MessageDialog::new()
+                                    .set_level(rfd::MessageLevel::Info)
+                                    .set_title("Updated App!")
+                                    .set_description("Please restart app to play updated version")
+                                    .set_buttons(rfd::MessageButtons::Ok)
+                                    .show();
+                                true
+                            }
+                            Err(err) => {
+                                error!("Unable to update app: {err}");
+                                false
+                            }
+                        },
+                        MessageDialogResult::No => false,
+                        _ => unreachable!(),
+                    }
+                } else {
+                    false
+                }
+            }
+            Err(err) => {
+                error!("Error Finding the latest release: {err}");
+                false
+            }
+        },
+        Err(err) => {
+            error!("Error Finding the latest release: {err}");
+            false
+        }
+    }
 }

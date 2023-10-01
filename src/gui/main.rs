@@ -14,7 +14,6 @@ use egui_dock::{DockState, Style};
 use egui_notify::Toasts;
 use log::info;
 use rfd::{FileDialog, MessageDialog, MessageDialogResult};
-use self_update::cargo_crate_version;
 use tokio::join;
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
@@ -114,7 +113,7 @@ impl GuiGreedApp {
 
         let dock_state = DockState::new(campaign_guis);
 
-        let mut app = GuiGreedApp {
+        GuiGreedApp {
             dock_state,
             tab_viewer: CampaignTabViewer::new(),
             app_state,
@@ -125,9 +124,7 @@ impl GuiGreedApp {
             rule_refresh_handle: RefCell::new(None),
             toasts,
             random_level: 0.0,
-        };
-        app.update_app(false);
-        app
+        }
     }
 
     fn menu_panel(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
@@ -158,10 +155,6 @@ impl GuiGreedApp {
                 }
 
                 self.refresh_rules(ui, frame);
-
-                if ui.button("Update App").clicked() && self.update_app(true) {
-                    frame.close();
-                }
 
                 ui.hyperlink_to("Greed Rulset", "https://docs.google.com/document/d/1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4/edit?usp=sharing");
             });
@@ -511,80 +504,6 @@ impl GuiGreedApp {
         }
 
         campaign.refresh_campaign();
-    }
-
-    fn update_app(&mut self, requested: bool) -> bool {
-        match self_update::backends::github::Update::configure()
-            .no_confirm(true)
-            .repo_owner("ekureina")
-            .repo_name("greed_console")
-            .current_version(cargo_crate_version!())
-            .bin_name("greed_console")
-            .show_output(false)
-            .build()
-        {
-            Ok(update) => match update.get_latest_release() {
-                Ok(release) => {
-                    if self_update::version::bump_is_greater(
-                        cargo_crate_version!(),
-                        &release.version,
-                    )
-                    .unwrap_or(false)
-                    {
-                        match MessageDialog::new()
-                            .set_level(rfd::MessageLevel::Info)
-                            .set_title(format!(
-                                "New version found: ({}). Update to latest version?",
-                                release.version
-                            ))
-                            .set_buttons(rfd::MessageButtons::YesNo)
-                            .show()
-                        {
-                            MessageDialogResult::Yes => match update.update_extended() {
-                                Ok(_) => {
-                                    MessageDialog::new()
-                                        .set_level(rfd::MessageLevel::Info)
-                                        .set_title("Updated App!")
-                                        .set_description(
-                                            "Please restart app to play updated version",
-                                        )
-                                        .set_buttons(rfd::MessageButtons::Ok)
-                                        .show();
-                                    return true;
-                                }
-                                Err(err) => {
-                                    error_log_and_notify(
-                                        &mut self.toasts,
-                                        format!("Unable to update app: {err}"),
-                                    );
-                                    return false;
-                                }
-                            },
-                            MessageDialogResult::No => return false,
-                            _ => unreachable!(),
-                        }
-                    } else if requested {
-                        info_log_and_notify(&mut self.toasts, "No update Available");
-                        return false;
-                    }
-                }
-                Err(err) => {
-                    error_log_and_notify(
-                        &mut self.toasts,
-                        format!("Error Finding the latest release: {err}"),
-                    );
-                    return false;
-                }
-            },
-            Err(err) => {
-                error_log_and_notify(
-                    &mut self.toasts,
-                    format!("Error Finding the latest release: {err}"),
-                );
-                return false;
-            }
-        }
-        true
     }
 }
 
