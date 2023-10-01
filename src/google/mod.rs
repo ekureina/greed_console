@@ -8,6 +8,8 @@ use crate::util::from_roman;
 use google_docs1::api::Document;
 use google_docs1::oauth2::{self, ServiceAccountAuthenticator};
 use google_docs1::{hyper, hyper_rustls, Docs};
+use google_drive3::DriveHub;
+use log::info;
 use thiserror::Error;
 
 /*
@@ -397,7 +399,35 @@ pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClasse
         classes.push(class);
         line = lines.by_ref().skip_while(|line| !line.contains('(')).next();
     }
-    Ok(ClassCache::new(origins, classes))
+    Ok(ClassCache::new(origins, classes, get_update_time().await?))
+}
+
+pub async fn get_update_time() -> Result<Option<i64>, GetUpdateTimeError> {
+    let sa = get_authenticator().await?;
+
+    let hub = DriveHub::new(
+        hyper::Client::builder().build(
+            hyper_rustls::HttpsConnectorBuilder::new()
+                .with_native_roots()
+                .https_or_http()
+                .enable_http1()
+                .enable_http2()
+                .build(),
+        ),
+        sa,
+    );
+
+    let timestamp = hub
+        .files()
+        .get("1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4")
+        .param("fields", "modifiedTime")
+        .doit()
+        .await?
+        .1
+        .modified_time
+        .map(|time| time.timestamp());
+    info!("New timestamp: {timestamp:?}");
+    Ok(timestamp)
 }
 
 #[derive(Debug, Error)]
@@ -414,4 +444,14 @@ pub enum GetOriginsAndClassesError {
     ClassParse,
     #[error("Failed to parse orign")]
     OriginParse,
+    #[error("Failed to get Update Time: {0}")]
+    UpdateTimeError(#[from] GetUpdateTimeError),
+}
+
+#[derive(Debug, Error)]
+pub enum GetUpdateTimeError {
+    #[error("IO error when getting Update Time: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Error in the Google Client: {0}")]
+    Google(#[from] google_drive3::Error),
 }

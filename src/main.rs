@@ -26,7 +26,9 @@ use crate::gui::main::GuiGreedApp;
 
 use clap::Parser;
 use eframe::NativeOptions;
+use log::{error, info};
 use model::classes::ClassCache;
+use rfd::{MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 
 mod cli;
 mod google;
@@ -55,15 +57,47 @@ fn main() {
         "Greed Console",
         native_options,
         Box::new(move |cc| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
             let class_cache = if let Some(cache) =
                 eframe::get_value::<ClassCache>(cc.storage.unwrap(), "class_cache")
             {
-                cache
+                let current_rules_update_time = rt.block_on(google::get_update_time());
+                match current_rules_update_time {
+                    Ok(current_rules_update_time) => {
+                        if cache.get_cache_update_time() == current_rules_update_time {
+                            cache
+                        } else {
+                            match MessageDialog::new()
+                                .set_title("Update Rules?")
+                                .set_description("Greed Rules Have been updated")
+                                .set_level(MessageLevel::Info)
+                                .set_buttons(MessageButtons::YesNo)
+                                .show()
+                            {
+                                MessageDialogResult::Yes => {
+                                    match rt
+                                    .block_on(google::get_origins_and_classes()){
+                                        Ok(new_cache) => {
+                                            info!("Got new cache!");
+                                            new_cache },
+                                        Err(err) => {
+                                            error!("Error getting new cache, using existing cache: {err}");
+                                            cache
+                                        }
+                                    } },
+                                _ => cache,
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        error!("Error fetching current rules update time: {err}");
+                        cache
+                    }
+                }
             } else {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .unwrap();
                 rt.block_on(google::get_origins_and_classes()).unwrap()
             };
             Box::new(GuiGreedApp::new(cc, class_cache, &args.campaigns))

@@ -278,10 +278,16 @@ impl LevelPrefixRequirement {
 pub struct ClassCache {
     origins: IndexMap<String, Class>,
     classes: IndexMap<String, Class>,
+    #[serde(default)]
+    cache_update_time: Option<i64>,
 }
 
 impl ClassCache {
-    pub fn new(origins: Vec<Class>, classes: Vec<Class>) -> ClassCache {
+    pub fn new(
+        origins: Vec<Class>,
+        classes: Vec<Class>,
+        cache_update_time: Option<i64>,
+    ) -> ClassCache {
         ClassCache {
             origins: origins
                 .into_iter()
@@ -291,6 +297,7 @@ impl ClassCache {
                 .into_iter()
                 .map(|class| (class.get_name(), class))
                 .collect(),
+            cache_update_time,
         }
     }
 
@@ -308,6 +315,10 @@ impl ClassCache {
 
     pub fn get_class_cache_count(&self) -> usize {
         self.classes.len()
+    }
+
+    pub fn get_cache_update_time(&self) -> Option<i64> {
+        self.cache_update_time
     }
 
     pub fn map_to_concrete_classes(&self, class_names: &[String]) -> Vec<Class> {

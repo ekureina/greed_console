@@ -602,8 +602,11 @@ impl eframe::App for GuiGreedApp {
     fn save(&mut self, storage: &mut dyn Storage) {
         info!("Saving! AppState: {:?}", self.app_state);
         eframe::set_value(storage, eframe::APP_KEY, &self.app_state);
-        if eframe::get_value::<ClassCache>(storage, "class_cache").is_none() {
-            eframe::set_value(storage, "class_cache", &*self.class_cache_rc.borrow());
+        let stored_cache = eframe::get_value::<ClassCache>(storage, "class_cache");
+        let current_cache = self.class_cache_rc.borrow();
+        if stored_cache.is_none() || stored_cache.is_some_and(|cache| cache != *current_cache) {
+            info!("Saving! AppState: {:?}", current_cache);
+            eframe::set_value(storage, "class_cache", &*current_cache);
         }
     }
 
