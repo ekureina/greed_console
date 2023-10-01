@@ -32,7 +32,11 @@ use thiserror::Error;
  */
 
 fn get_creds() -> std::io::Result<oauth2::ApplicationSecret> {
-    oauth2::parse_application_secret(include_bytes!("../../credentials.json"))
+    oauth2::parse_application_secret(concat!("{\"installed\":{\"client_id\":\"16310722142-jpgg1at5io0cih02f33",
+        "3pc3ojpueucu7.apps.googleusercontent.com\",\"project_id\":\"greed-console\",\"auth_uri\":\"https://a",
+        "ccounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_prov",
+        "ider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_secret\":\"GOCSPX-0CyEU",
+        "q0a65azT-lmK5GlbxCCrXBT\",\"redirect_uris\":[\"http://localhost\"]}}"))
 }
 
 async fn get_authenticator() -> Result<
