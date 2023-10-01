@@ -358,26 +358,27 @@ fn convert_to_lines(doc: Document) -> Result<Vec<String>, GetOriginsAndClassesEr
 pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClassesError> {
     let document = get_document().await?;
 
-    let mut lines = convert_to_lines(document)?.into_iter();
+    let lines = convert_to_lines(document)?;
+    let mut origin_lines = lines.clone().into_iter();
 
     let mut origins = Vec::<Class>::new();
-    let mut line = lines.next();
+    let mut line = origin_lines.next();
     while !line
         .as_ref()
         .ok_or(GetOriginsAndClassesError::FormatChange)?
-        .starts_with("Template")
+        .contains('(')
     {
         let origin = get_origin(
             &line.ok_or(GetOriginsAndClassesError::OriginParse)?,
-            lines.by_ref(),
+            origin_lines.by_ref(),
         )?;
         if origin.clone().get_name() == "Human" {
-            line = lines
+            line = origin_lines
                 .by_ref()
                 .skip_while(|paragraph| !paragraph.starts_with("Dwarf"))
                 .next();
         } else {
-            line = lines
+            line = origin_lines
                 .by_ref()
                 .skip_while(|paragraph| paragraph.trim().is_empty())
                 .next();
@@ -385,19 +386,22 @@ pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClasse
         origins.push(origin);
     }
 
-    let _ = lines
-        .by_ref()
-        .skip_while(|paragraph| !paragraph.starts_with("Template"));
-    line = lines.by_ref().skip_while(|line| !line.contains('(')).next();
+    let class_lines = lines.into_iter();
+    let mut class_lines = class_lines.skip_while(|paragraph| !paragraph.contains("(I)"));
+
+    line = class_lines.by_ref().next();
 
     let mut classes = Vec::<Class>::new();
     while line.is_some() {
         let class = get_class(
             &line.ok_or(GetOriginsAndClassesError::FormatChange)?,
-            lines.by_ref(),
+            class_lines.by_ref(),
         )?;
         classes.push(class);
-        line = lines.by_ref().skip_while(|line| !line.contains('(')).next();
+        line = class_lines
+            .by_ref()
+            .skip_while(|line| !line.contains('('))
+            .next();
     }
     Ok(ClassCache::new(origins, classes, get_update_time().await?))
 }
