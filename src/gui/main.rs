@@ -75,16 +75,11 @@ pub struct GuiGreedApp {
 
 impl GuiGreedApp {
     pub fn new(
-        cc: &eframe::CreationContext,
         class_cache: ClassCache,
         campaigns: &[OsString],
+        app_state: AppState,
     ) -> GuiGreedApp {
         info!("Starting up app!");
-        let app_state = if let Some(storage) = cc.storage {
-            eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
-        } else {
-            AppState::new()
-        };
 
         let class_cache_rc = Rc::new(RefCell::new(class_cache));
 
@@ -138,6 +133,10 @@ impl GuiGreedApp {
                 egui::popup_below_widget(ui, about_popup_id, &about_response, |ui| {
                     ui.set_min_width(450.0);
                     ui.label(COPYRIGHT_NOTICE);
+                });
+
+                ui.menu_button("Settings", |ui| {
+                    ui.checkbox(self.app_state.skip_rules_update_confirmation_mut(), "Skip Confirmation for rules update on start");
                 });
 
                 ui.menu_button("Campaign", |ui| {

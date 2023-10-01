@@ -26,10 +26,12 @@ use crate::gui::main::GuiGreedApp;
 
 use clap::Parser;
 use eframe::NativeOptions;
+use gui::state::AppState;
 use log::{error, info};
 use model::classes::ClassCache;
 use rfd::{MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use self_update::cargo_crate_version;
+use tokio::runtime::Runtime;
 
 mod cli;
 mod google;
@@ -62,6 +64,12 @@ fn main() {
         "Greed Console",
         native_options,
         Box::new(move |cc| {
+            let app_state = if let Some(storage) = cc.storage {
+                eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
+            } else {
+                AppState::new()
+            };
+
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
@@ -74,7 +82,7 @@ fn main() {
                     Ok(current_rules_update_time) => {
                         if cache.get_cache_update_time() == current_rules_update_time {
                             cache
-                        } else {
+                        } else if !app_state.skip_rules_update_confirmation() {
                             match MessageDialog::new()
                                 .set_title("Update Rules?")
                                 .set_description("Greed Rules Have been updated")
@@ -82,19 +90,11 @@ fn main() {
                                 .set_buttons(MessageButtons::YesNo)
                                 .show()
                             {
-                                MessageDialogResult::Yes => {
-                                    match rt
-                                    .block_on(google::get_origins_and_classes()){
-                                        Ok(new_cache) => {
-                                            info!("Got new cache!");
-                                            new_cache },
-                                        Err(err) => {
-                                            error!("Error getting new cache, using existing cache: {err}");
-                                            cache
-                                        }
-                                    } },
+                                MessageDialogResult::Yes => conditionally_get_new_cache(&rt, cache),
                                 _ => cache,
                             }
+                        } else {
+                            conditionally_get_new_cache(&rt, cache)
                         }
                     }
                     Err(err) => {
@@ -105,10 +105,29 @@ fn main() {
             } else {
                 rt.block_on(google::get_origins_and_classes()).unwrap()
             };
-            Box::new(GuiGreedApp::new(cc, class_cache, &args.campaigns))
+            Box::new(GuiGreedApp::new(class_cache, &args.campaigns, app_state))
         }),
     )
     .unwrap();
+}
+
+fn conditionally_get_new_cache(rt: &Runtime, old_cache: ClassCache) -> ClassCache {
+    match rt.block_on(google::get_origins_and_classes()) {
+        Ok(new_cache) => {
+            info!("Got new cache!");
+            new_cache
+        }
+        Err(err) => {
+            error!("Error getting new cache, using existing cache: {err}");
+            MessageDialog::new()
+                .set_title("Error")
+                .set_description("Error getting new rules from Google")
+                .set_level(MessageLevel::Warning)
+                .set_buttons(MessageButtons::Ok)
+                .show();
+            old_cache
+        }
+    }
 }
 
 fn update_app() -> bool {

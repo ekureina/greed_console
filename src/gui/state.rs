@@ -24,6 +24,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct AppState {
     campaign_path_history: VecDeque<OsString>,
+    #[serde(default)]
+    skip_rules_update_confirmation: bool,
 }
 
 impl AppState {
@@ -57,6 +59,14 @@ impl AppState {
         if entry_pos < self.campaign_path_history.len() {
             self.campaign_path_history.remove(entry_pos);
         }
+    }
+
+    pub fn skip_rules_update_confirmation(&self) -> bool {
+        self.skip_rules_update_confirmation
+    }
+
+    pub fn skip_rules_update_confirmation_mut(&mut self) -> &mut bool {
+        &mut self.skip_rules_update_confirmation
     }
 }
 
