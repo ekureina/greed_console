@@ -27,10 +27,21 @@ use crate::gui::main::GuiGreedApp;
 use clap::Parser;
 use eframe::NativeOptions;
 use gui::state::AppState;
-use log::{error, info};
+use log::{error, info, warn, LevelFilter};
+use log4rs::{
+    append::rolling_file::{
+        policy::compound::{
+            roll::delete::DeleteRoller, trigger::size::SizeTrigger, CompoundPolicy,
+        },
+        RollingFileAppender,
+    },
+    config::{Appender, Root},
+    Config,
+};
 use model::classes::ClassCache;
 use rfd::{MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use self_update::cargo_crate_version;
+use std::path::Path;
 use tokio::runtime::Runtime;
 
 mod cli;
@@ -40,7 +51,29 @@ mod model;
 mod util;
 
 fn main() {
-    env_logger::init();
+    let file_logger = RollingFileAppender::builder()
+        .build(
+            Path::new(&eframe::storage_dir("Greed Console").unwrap())
+                .join("app.log")
+                .to_str()
+                .unwrap(),
+            Box::new(CompoundPolicy::new(
+                Box::new(SizeTrigger::new(10 * 1024 * 1024)),
+                Box::new(DeleteRoller::new()),
+            )),
+        )
+        .unwrap();
+
+    let config = Config::builder()
+        .appender(Appender::builder().build("file_logger", Box::new(file_logger)))
+        .build(
+            Root::builder()
+                .appender("file_logger")
+                .build(LevelFilter::Info),
+        )
+        .unwrap();
+
+    log4rs::init_config(config).unwrap();
 
     if update_app() {
         return;
