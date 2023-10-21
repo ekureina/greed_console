@@ -21,6 +21,7 @@ pub struct CampaignGui {
     character_origin: Option<Class>,
     class_cache: Rc<RefCell<ClassCache>>,
     description_hovering: bool,
+    track_turns: bool,
 }
 
 impl CampaignGui {
@@ -39,6 +40,7 @@ impl CampaignGui {
             character_origin: None,
             class_cache,
             description_hovering: true,
+            track_turns: true,
         }
     }
 
@@ -58,11 +60,7 @@ impl CampaignGui {
                             self.passive_panel(ui);
                         });
                     }
-                    // List of all non-Execute primary actions
-                    if self.primary_actions.len() > 1
-                        || (self.primary_actions.len() == 1
-                            && self.primary_actions[0].get_name() != "Execute")
-                    {
+                    if !self.primary_actions.is_empty() {
                         ui.vertical(|ui| {
                             self.primary_panel(ui);
                         });
@@ -162,6 +160,7 @@ impl CampaignGui {
                 });
 
                 ui.checkbox(&mut self.description_hovering, "Hover Description");
+                ui.checkbox(&mut self.track_turns, "Track Turns");
             });
         });
     }
@@ -201,26 +200,39 @@ impl CampaignGui {
     fn primary_panel(&mut self, ui: &mut egui::Ui) {
         ui.set_width(ui.available_width() / 3.0);
         ui.group(|ui| {
-            ui.label(format!(
-                "Primary Actions ({} remaining):",
-                self.game_state.get_primary_actions()
-            ));
+            let label_text = if self.track_turns {
+                format!(
+                    "Primary Actions ({} remaining):",
+                    self.game_state.get_primary_actions()
+                )
+            } else {
+                "Primary Actions:".to_owned()
+            };
+            ui.label(label_text);
             for action in &self.primary_actions {
-                let button_response = ui.add_enabled(
-                    self.game_state.get_primary_usable(),
-                    egui::Button::new(action.get_name()),
-                );
-                let button_response = if self.description_hovering {
-                    button_response
-                        .on_hover_text(action.get_description())
-                        .on_disabled_hover_text(action.get_description())
-                } else {
-                    ui.label(action.get_description());
-                    button_response
-                };
+                if self.track_turns {
+                    let button_response = ui.add_enabled(
+                        self.game_state.get_primary_usable(),
+                        egui::Button::new(action.get_name()),
+                    );
+                    let button_response = if self.description_hovering {
+                        button_response
+                            .on_hover_text(action.get_description())
+                            .on_disabled_hover_text(action.get_description())
+                    } else {
+                        ui.label(action.get_description());
+                        button_response
+                    };
 
-                if button_response.clicked() && action.get_name() != "Execute" {
-                    self.game_state.use_primary();
+                    if button_response.clicked() && action.get_name() != "Execute" {
+                        self.game_state.use_primary();
+                    }
+                } else if self.description_hovering {
+                    ui.label(egui::RichText::new(action.get_name()).strong())
+                        .on_hover_text(action.get_description());
+                } else {
+                    ui.label(egui::RichText::new(action.get_name()).strong());
+                    ui.label(action.get_description());
                 }
             }
         });
@@ -229,25 +241,38 @@ impl CampaignGui {
     fn secondary_panel(&mut self, ui: &mut egui::Ui) {
         ui.set_width(ui.available_width() / 2.0);
         ui.group(|ui| {
-            ui.label(format!(
-                "Secondary Actions ({} remaining):",
-                self.game_state.get_secondary_actions()
-            ));
+            let label_text = if self.track_turns {
+                format!(
+                    "Secondary Actions ({} remaining):",
+                    self.game_state.get_secondary_actions()
+                )
+            } else {
+                "Secondary Actions:".to_owned()
+            };
+            ui.label(label_text);
             for action in &self.secondary_actions {
-                let button_response = ui.add_enabled(
-                    self.game_state.get_secondary_usable(),
-                    egui::Button::new(action.get_name()),
-                );
-                let button_response = if self.description_hovering {
-                    button_response
-                        .on_hover_text(action.get_description())
-                        .on_disabled_hover_text(action.get_description())
+                if self.track_turns {
+                    let button_response = ui.add_enabled(
+                        self.game_state.get_secondary_usable(),
+                        egui::Button::new(action.get_name()),
+                    );
+                    let button_response = if self.description_hovering {
+                        button_response
+                            .on_hover_text(action.get_description())
+                            .on_disabled_hover_text(action.get_description())
+                    } else {
+                        ui.label(action.get_description());
+                        button_response
+                    };
+                    if button_response.clicked() {
+                        self.game_state.use_secondary();
+                    }
+                } else if self.description_hovering {
+                    ui.label(egui::RichText::new(action.get_name()).strong())
+                        .on_hover_text(action.get_description());
                 } else {
+                    ui.label(egui::RichText::new(action.get_name()).strong());
                     ui.label(action.get_description());
-                    button_response
-                };
-                if button_response.clicked() {
-                    self.game_state.use_secondary();
                 }
             }
         });
@@ -259,7 +284,8 @@ impl CampaignGui {
 
             for action in &self.game_state.get_special_actions().clone() {
                 let button_response = ui.add_enabled(
-                    action.is_usable() && self.game_state.get_any_special_usable(),
+                    action.is_usable()
+                        && (self.game_state.get_any_special_usable() || !self.track_turns),
                     egui::Button::new(action.get_name()),
                 );
                 let button_response = if self.description_hovering {
