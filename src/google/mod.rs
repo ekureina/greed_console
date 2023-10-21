@@ -209,7 +209,8 @@ fn determine_class_requirements(line: &str) -> Box<dyn ClassRequirement> {
     if let Some(index) = line.find(',') {
         let (first, second) = line.split_at(index);
         let first_requirement = determine_class_requirements(first);
-        let second_requirement = determine_class_requirements(second.get(1..).unwrap());
+        let second_requirement =
+            determine_class_requirements(second.get(1..).unwrap().trim_start());
         Box::new(AndClassRequirement::new(
             first_requirement,
             second_requirement,
