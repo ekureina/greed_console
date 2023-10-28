@@ -1,5 +1,7 @@
 use std::{cell::RefCell, ffi::OsString, path::Path, rc::Rc};
 
+use log::info;
+
 use crate::model::{
     actions::{PrimaryAction, SecondaryAction},
     classes::{Class, ClassCache, ClassPassive, ClassUtility},
@@ -427,6 +429,7 @@ impl CampaignGui {
     }
 
     pub fn add_new_class(&mut self, class: Class) {
+        info!("Adding class: \"{}\"", class.get_name());
         self.utilities.extend_from_slice(class.get_utilities());
         self.passives.extend_from_slice(class.get_passives());
         self.primary_actions.push(class.get_primary_action());
@@ -439,6 +442,7 @@ impl CampaignGui {
     }
 
     fn remove_class(&mut self, class: &Class) {
+        info!("Removing class: \"{}\"", class.get_name());
         self.utilities.retain(|utility| {
             !class
                 .get_utilities()
@@ -468,7 +472,7 @@ impl CampaignGui {
             self.game_state.remove_special_action(special_index);
         }
         self.character_classes
-            .retain(|stored_class| stored_class.get_name() == class.get_name());
+            .retain(|stored_class| stored_class.get_name() != class.get_name());
         self.current_save
             .get_save_mut()
             .get_character_mut()
