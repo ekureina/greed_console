@@ -409,39 +409,20 @@ impl GuiGreedApp {
     }
 
     fn open_new_save(&mut self, new_save_path: &OsString) {
-        let current_save_saved =
-            if let Some((_, campaign_gui)) = self.dock_state.find_active_focused() {
-                campaign_gui.save().map_or_else(
-                    || true,
-                    |result| {
-                        result
-                            .map_err(|err| {
-                                error_log_and_notify(
-                                    &mut self.toasts,
-                                    format!("Unable to save current save: {err}",),
-                                );
-                            })
-                            .is_ok()
-                    },
-                )
-            } else {
-                true
-            };
-        if current_save_saved {
-            if let Ok(new_save) = SaveWithPath::from_path(new_save_path).map_err(|err| {
-                error_log_and_notify(
-                    &mut self.toasts,
-                    format!(
-                        "Error loading save file at '{}': {err}",
-                        new_save_path.to_string_lossy()
-                    ),
-                );
-            }) {
-                let mut campaign_gui =
-                    CampaignGui::new_refreshable(new_save, self.class_cache_rc.clone());
-                campaign_gui.refresh_campaign();
-                self.dock_state.push_to_first_leaf(campaign_gui);
-            }
+        if let Ok(new_save) = SaveWithPath::from_path(new_save_path).map_err(|err| {
+            error_log_and_notify(
+                &mut self.toasts,
+                format!(
+                    "Error loading save file at '{}': {err}",
+                    new_save_path.to_string_lossy()
+                ),
+            );
+        }) {
+            let mut campaign_gui =
+                CampaignGui::new_refreshable(new_save, self.class_cache_rc.clone());
+            campaign_gui.refresh_campaign();
+            self.dock_state.push_to_first_leaf(campaign_gui);
+            self.app_state.add_new_path_to_history(new_save_path);
         }
     }
 
