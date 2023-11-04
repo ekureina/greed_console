@@ -1659,26 +1659,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "google-docs1"
-version = "5.0.3+20230119"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05628fa8b767a2c22f49e3335163ab74fbe9baf03418a3e82a602b0901d31bd3"
-dependencies = [
- "anyhow",
- "google-apis-common",
- "http",
- "hyper",
- "hyper-rustls",
- "itertools",
- "mime",
- "serde",
- "serde_json",
- "tokio",
- "tower-service",
- "url 1.7.2",
-]
-
-[[package]]
 name = "google-drive3"
 version = "5.0.3+20230115"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1700,7 +1680,7 @@ dependencies = [
 
 [[package]]
 name = "greed_console"
-version = "0.13.0"
+version = "0.14.0-devel"
 dependencies = [
  "clap",
  "eframe",
@@ -1708,7 +1688,6 @@ dependencies = [
  "egui-notify",
  "egui_dock",
  "fastrand 2.0.1",
- "google-docs1",
  "google-drive3",
  "indexmap 2.0.2",
  "log",

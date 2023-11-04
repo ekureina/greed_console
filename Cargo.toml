@@ -1,6 +1,6 @@
 [package]
 name = "greed_console"
-version = "0.13.0"
+version = "0.14.0-devel"
 edition = "2021"
 authors = ["Claire Moore <kurennon@gmail.com>"]
 rust-version = "1.71"
@@ -17,7 +17,6 @@ egui = "0.23.0"
 egui_dock = "0.8.0"
 egui-notify = "0.10.0"
 fastrand = "2.0.1"
-google-docs1 = "5.0.3"
 google-drive3 = "5.0.3"
 indexmap = { version = "2.0.2", features = ["serde"] }
 log = "0.4.20"

@@ -4,12 +4,13 @@ use crate::model::classes::{
     LevelPrefixRequirement, SuperClassRequirement,
 };
 use crate::util::from_roman;
-use std::path::Path;
 
-use google_docs1::api::Document;
-use google_docs1::oauth2::{self, InstalledFlowAuthenticator};
-use google_docs1::{hyper, hyper_rustls, Docs};
+use google_drive3::client::NoToken;
+use google_drive3::hyper::body::to_bytes;
+use google_drive3::hyper::client::HttpConnector;
+use google_drive3::hyper_rustls::HttpsConnector;
 use google_drive3::DriveHub;
+use google_drive3::{hyper, hyper_rustls};
 use log::info;
 use thiserror::Error;
 
@@ -31,60 +32,9 @@ use thiserror::Error;
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-fn get_creds() -> std::io::Result<oauth2::ApplicationSecret> {
-    oauth2::parse_application_secret(concat!("{\"installed\":{\"client_id\":\"16310722142-jpgg1at5io0cih02f33",
-        "3pc3ojpueucu7.apps.googleusercontent.com\",\"project_id\":\"greed-console\",\"auth_uri\":\"https://a",
-        "ccounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_prov",
-        "ider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_secret\":\"GOCSPX-0CyEU",
-        "q0a65azT-lmK5GlbxCCrXBT\",\"redirect_uris\":[\"http://localhost\"]}}"))
-}
-
-async fn get_authenticator() -> Result<
-    oauth2::authenticator::Authenticator<
-        hyper_rustls::HttpsConnector<hyper::client::HttpConnector>,
-    >,
-    AuthenticatorError,
-> {
-    let creds = get_creds()?;
-
-    let auth =
-        InstalledFlowAuthenticator::builder(creds, oauth2::InstalledFlowReturnMethod::HTTPRedirect)
-            .flow_delegate(Box::new(WebbrowserFlowDelegate))
-            .persist_tokens_to_disk(
-                Path::new(&eframe::storage_dir("Greed Console").unwrap()).join("oauth2"),
-            )
-            .build()
-            .await?;
-    let scopes = &[
-        google_docs1::api::Scope::DocumentReadonly.as_ref(),
-        google_drive3::api::Scope::MetadataReadonly.as_ref(),
-    ];
-    auth.token(scopes).await.unwrap();
-    Ok(auth)
-}
-
-async fn get_document() -> Result<google_docs1::api::Document, GetOriginsAndClassesError> {
-    let auth = get_authenticator().await?;
-
-    let hub = Docs::new(
-        hyper::Client::builder().build(
-            hyper_rustls::HttpsConnectorBuilder::new()
-                .with_native_roots()
-                .https_or_http()
-                .enable_http1()
-                .enable_http2()
-                .build(),
-        ),
-        auth,
-    );
-
-    Ok(hub
-        .documents()
-        .get("1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4")
-        .doit()
-        .await?
-        .1)
-}
+static API_KEY: &str = "AIzaSyBRY2-Rb0_OBRRmiq4duFOksNh9_0FQPGQ";
+static GREED_RULES_DOC_ID: &str = "1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4";
+static RULES_EXPORT_FORMAT: &str = "text/plain";
 
 #[allow(let_underscore_drop, clippy::too_many_lines)]
 fn get_class(
@@ -118,14 +68,17 @@ fn get_class(
     let mut utility_names = vec![];
     let mut utility_descriptions = vec![];
     for line in utility_data {
-        if line.starts_with('\t') || line.starts_with('-') {
-            utility_description.push_str(&line);
-        } else {
-            utility_names.push(line.trim_end().to_owned());
+        if line.starts_with('*') {
+            utility_names.push(line.trim_start_matches('*').trim().to_owned());
             if !utility_description.is_empty() {
                 utility_descriptions.push(utility_description.trim_end().to_owned());
                 utility_description.clear();
             }
+        } else {
+            if !utility_description.is_empty() {
+                utility_description.push('\n');
+            }
+            utility_description.push_str(&line);
         }
     }
     if !utility_description.is_empty() {
@@ -143,14 +96,17 @@ fn get_class(
     let mut passive_names = vec![];
     let mut passive_descriptions = vec![];
     for line in passive_data {
-        if line.starts_with('\t') || line.starts_with('-') {
-            passive_description.push_str(&line);
-        } else {
-            passive_names.push(line.trim_end().to_owned());
+        if line.starts_with('*') {
+            passive_names.push(line.trim_start_matches('*').trim().to_owned());
             if !passive_description.is_empty() {
                 passive_descriptions.push(passive_description.trim_end().to_owned());
                 passive_description.clear();
             }
+        } else {
+            if !passive_description.is_empty() {
+                passive_description.push('\n');
+            }
+            passive_description.push_str(&line);
         }
     }
     if !passive_description.is_empty() {
@@ -163,34 +119,40 @@ fn get_class(
     let primary_name = paragraphs
         .next()
         .ok_or(GetOriginsAndClassesError::ClassParse)?
-        .trim_end()
+        .trim_start_matches('*')
+        .trim()
         .to_owned();
     let primary_description = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Secondary"))
-        .collect::<String>()
+        .collect::<Vec<String>>()
+        .join("\n")
         .trim_end()
         .to_owned();
     let secondary_name = paragraphs
         .next()
         .ok_or(GetOriginsAndClassesError::ClassParse)?
-        .trim_end()
+        .trim_start_matches('*')
+        .trim()
         .to_owned();
     let secondary_description = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Special"))
-        .collect::<String>()
+        .collect::<Vec<String>>()
+        .join("\n")
         .trim_end()
         .to_owned();
     let special_name = paragraphs
         .next()
         .ok_or(GetOriginsAndClassesError::ClassParse)?
-        .trim_end()
+        .trim_start_matches('*')
+        .trim()
         .to_owned();
     let special_description = paragraphs
         .by_ref()
         .take_while(|line| !line.starts_with("Subclasses"))
-        .collect::<String>()
+        .collect::<Vec<String>>()
+        .join("\n")
         .trim_end()
         .to_owned();
     Ok(Class::new(
@@ -255,14 +217,17 @@ fn get_origin(
         let mut utility_names = vec![];
         let mut utility_descriptions = vec![];
         for line in utility_data {
-            if line.starts_with('\t') || line.starts_with('-') {
-                utility_description.push_str(&line);
-            } else {
-                utility_names.push(line.trim_end().to_owned());
+            if line.starts_with('*') {
+                utility_names.push(line.trim_start_matches('*').trim().to_owned());
                 if !utility_description.is_empty() {
                     utility_descriptions.push(utility_description.trim_end().to_owned());
                     utility_description.clear();
                 }
+            } else {
+                if !utility_description.is_empty() {
+                    utility_description.push('\n');
+                }
+                utility_description.push_str(&line);
             }
         }
         if !utility_description.is_empty() {
@@ -280,14 +245,17 @@ fn get_origin(
         let mut passive_names = vec![];
         let mut passive_descriptions = vec![];
         for line in passive_data {
-            if line.starts_with('\t') || line.starts_with('-') {
-                passive_description.push_str(&line);
-            } else {
-                passive_names.push(line.trim_end().to_owned());
+            if line.starts_with('*') {
+                passive_names.push(line.trim_start_matches('*').trim().to_owned());
                 if !passive_description.is_empty() {
                     passive_descriptions.push(passive_description.trim_end().to_owned());
                     passive_description.clear();
                 }
+            } else {
+                if !passive_description.is_empty() {
+                    passive_description.push('\n');
+                }
+                passive_description.push_str(&line);
             }
         }
         if !passive_description.is_empty() {
@@ -300,34 +268,40 @@ fn get_origin(
         let primary_name = paragraphs
             .next()
             .ok_or(GetOriginsAndClassesError::OriginParse)?
-            .trim_end()
+            .trim_start_matches('*')
+            .trim()
             .to_owned();
         let primary_description = paragraphs
             .by_ref()
             .take_while(|line| !line.starts_with("Secondary"))
-            .collect::<String>()
+            .collect::<Vec<String>>()
+            .join("\n")
             .trim_end()
             .to_owned();
         let secondary_name = paragraphs
             .next()
             .ok_or(GetOriginsAndClassesError::OriginParse)?
-            .trim_end()
+            .trim_start_matches('*')
+            .trim()
             .to_owned();
         let secondary_description = paragraphs
             .by_ref()
             .take_while(|line| !line.starts_with("Special"))
-            .collect::<String>()
+            .collect::<Vec<String>>()
+            .join("\n")
             .trim_end()
             .to_owned();
         let special_name = paragraphs
             .next()
             .ok_or(GetOriginsAndClassesError::OriginParse)?
-            .trim_end()
+            .trim_start_matches('*')
+            .trim()
             .to_owned();
         let special_description = paragraphs
             .by_ref()
             .take_while(|line| !line.trim().is_empty())
-            .collect::<String>()
+            .collect::<Vec<String>>()
+            .join("\n")
             .trim_end()
             .to_owned();
         Ok(Class::new(
@@ -343,42 +317,46 @@ fn get_origin(
     }
 }
 
-fn convert_to_lines(doc: Document) -> Result<Vec<String>, GetOriginsAndClassesError> {
-    let content = doc
-        .body
-        .ok_or(GetOriginsAndClassesError::MissingDoc)?
-        .content
-        .ok_or(GetOriginsAndClassesError::MissingDoc)?;
+fn get_hub() -> DriveHub<HttpsConnector<HttpConnector>> {
+    DriveHub::new(
+        hyper::Client::builder().build(
+            hyper_rustls::HttpsConnectorBuilder::new()
+                .with_native_roots()
+                .https_only()
+                .enable_http2()
+                .build(),
+        ),
+        NoToken,
+    )
+}
+
+async fn get_rules() -> Result<Vec<String>, GetOriginsAndClassesError> {
+    let content = String::from_utf8(
+        to_bytes(
+            get_hub()
+                .files()
+                .export(GREED_RULES_DOC_ID, RULES_EXPORT_FORMAT)
+                .param("key", API_KEY)
+                .doit()
+                .await?,
+        )
+        .await?
+        .to_vec(),
+    )?;
+
+    info!("Rules Document: {content}");
 
     Ok(content
-        .iter()
-        .filter_map(|element| {
-            element.paragraph.as_ref().and_then(|p| {
-                let bullet_text = p.bullet.clone().map_or_else(String::new, |b| {
-                    b.nesting_level.map_or_else(String::new, |il| {
-                        "\t".repeat((il - 1).try_into().unwrap_or(0)) + "- "
-                    })
-                });
-                p.elements
-                    .as_ref()
-                    .map(|e| {
-                        e.iter()
-                            .filter_map(|pe| pe.text_run.as_ref().and_then(|tr| tr.content.clone()))
-                            .collect::<String>()
-                    })
-                    .map(|text| bullet_text + &text)
-            })
-        })
+        .lines()
         .skip_while(|paragraph| !paragraph.starts_with("Origins"))
         .skip(1)
+        .map(String::from)
         .collect())
 }
 
 #[allow(clippy::skip_while_next)]
 pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClassesError> {
-    let document = get_document().await?;
-
-    let lines = convert_to_lines(document)?;
+    let lines = get_rules().await?;
     let mut origin_lines = lines.clone().into_iter();
 
     let mut origins = Vec::<Class>::new();
@@ -400,6 +378,8 @@ pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClasse
         } else {
             line = origin_lines
                 .by_ref()
+                .skip_while(|paragraph| paragraph.trim().is_empty())
+                .skip_while(|paragraph| paragraph.starts_with('_'))
                 .skip_while(|paragraph| paragraph.trim().is_empty())
                 .next();
         }
@@ -427,24 +407,13 @@ pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClasse
 }
 
 pub async fn get_update_time() -> Result<Option<i64>, GetUpdateTimeError> {
-    let auth = get_authenticator().await?;
-
-    let hub = DriveHub::new(
-        hyper::Client::builder().build(
-            hyper_rustls::HttpsConnectorBuilder::new()
-                .with_native_roots()
-                .https_or_http()
-                .enable_http1()
-                .enable_http2()
-                .build(),
-        ),
-        auth,
-    );
+    let hub = get_hub();
 
     let timestamp = hub
         .files()
         .get("1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4")
         .param("fields", "modifiedTime")
+        .param("key", API_KEY)
         .doit()
         .await?
         .1
@@ -456,12 +425,12 @@ pub async fn get_update_time() -> Result<Option<i64>, GetUpdateTimeError> {
 
 #[derive(Debug, Error)]
 pub enum GetOriginsAndClassesError {
-    #[error("Error getting authenticator: {0}")]
-    Authenticator(#[from] AuthenticatorError),
     #[error("Error in the Google Client: {0}")]
-    Google(#[from] google_docs1::Error),
-    #[error("Missing rules document")]
-    MissingDoc,
+    Google(#[from] google_drive3::Error),
+    #[error("Error parsing rules document: {0}")]
+    Parse(#[from] google_drive3::hyper::Error),
+    #[error("Error parsing rules document as utf8: {0}")]
+    Utf8Parse(#[from] std::string::FromUtf8Error),
     #[error("The format of the rules doc has changed, please fix parsing")]
     FormatChange,
     #[error("Failed to parse class")]
@@ -474,33 +443,6 @@ pub enum GetOriginsAndClassesError {
 
 #[derive(Debug, Error)]
 pub enum GetUpdateTimeError {
-    #[error("Error getting authenticator: {0}")]
-    Authenticator(#[from] AuthenticatorError),
     #[error("Error in the Google Client: {0}")]
     Google(#[from] google_drive3::Error),
-}
-
-#[derive(Debug, Error)]
-pub enum AuthenticatorError {
-    #[error("IO error when getting Authenticator: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("Error in the Oauth2 process: {0}")]
-    Oauth2(#[from] google_docs1::oauth2::Error),
-}
-
-#[derive(Debug, Clone)]
-struct WebbrowserFlowDelegate;
-
-impl oauth2::authenticator_delegate::InstalledFlowDelegate for WebbrowserFlowDelegate {
-    fn present_user_url<'a>(
-        &'a self,
-        url: &'a str,
-        _need_code: bool,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, String>> + Send + 'a>>
-    {
-        Box::pin(async {
-            webbrowser::open(url).map_err(|err| err.to_string())?;
-            Ok(String::new())
-        })
-    }
 }
