@@ -32,7 +32,7 @@ use thiserror::Error;
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-static API_KEY: &str = "AIzaSyBRY2-Rb0_OBRRmiq4duFOksNh9_0FQPGQ";
+static API_KEY: &str = env!("API_KEY");
 static GREED_RULES_DOC_ID: &str = "1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4";
 static RULES_EXPORT_FORMAT: &str = "text/plain";
 
