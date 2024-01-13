@@ -94,6 +94,12 @@ impl CampaignGui {
                     self.game_state.use_inspiration();
                 }
             });
+
+            ui.label("Notes:");
+            ui.add_sized(
+                ui.available_size(),
+                egui::TextEdit::multiline(self.current_save.get_save_mut().get_notes_mut()),
+            );
         });
         self.current_save
             .get_save_mut()

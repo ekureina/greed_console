@@ -38,6 +38,8 @@ pub struct Save {
     battle_power: i8,
     #[serde(default)]
     battle_defense: i8,
+    #[serde(default)]
+    notes: String,
 }
 
 impl Save {
@@ -121,6 +123,10 @@ impl Save {
     pub fn get_used_specials(&self) -> HashSet<String> {
         self.used_specials.clone()
     }
+
+    pub fn get_notes_mut(&mut self) -> &mut String {
+        &mut self.notes
+    }
 }
 
 impl Default for Save {
@@ -133,6 +139,7 @@ impl Default for Save {
             used_specials: HashSet::default(),
             battle_power: 0,
             battle_defense: 0,
+            notes: String::default(),
         }
     }
 }
