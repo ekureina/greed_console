@@ -41,7 +41,11 @@ use log4rs::{
 use model::classes::ClassCache;
 use rfd::{MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use self_update::cargo_crate_version;
-use std::path::Path;
+use std::{
+    env::{args_os, current_exe},
+    path::Path,
+    process::Command,
+};
 use tokio::runtime::Runtime;
 
 mod cli;
@@ -76,6 +80,12 @@ fn main() {
     log4rs::init_config(config).unwrap();
 
     if update_app() {
+        let executable_name = current_exe().unwrap();
+        let direct_args = args_os();
+        Command::new(executable_name)
+            .args(direct_args)
+            .output()
+            .unwrap();
         return;
     }
 
@@ -197,7 +207,6 @@ fn update_app() -> bool {
                                 MessageDialog::new()
                                     .set_level(rfd::MessageLevel::Info)
                                     .set_title("Updated App!")
-                                    .set_description("Please restart app to play updated version")
                                     .set_buttons(rfd::MessageButtons::Ok)
                                     .show();
                                 true
