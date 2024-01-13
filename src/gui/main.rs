@@ -139,6 +139,20 @@ impl GuiGreedApp {
 
                 ui.menu_button("Settings", |ui| {
                     ui.checkbox(self.app_state.skip_rules_update_confirmation_mut(), "Skip Confirmation for rules update on start");
+                    let mut font_scaling = self.app_state.get_font_scaling();
+                    ui.horizontal(|ui| {
+                        ui.label("Font Scaling:");
+                        ui.add(egui::Slider::new(&mut font_scaling, 1.0..=5.0));
+                    });
+                    // Did the value meaninifully change?
+                    if (font_scaling - self.app_state.get_font_scaling()).abs() > f32::EPSILON {
+                        ctx.style_mut(|style| {
+                            for (_, font_id) in style.text_styles.iter_mut() {
+                                font_id.size *= font_scaling / self.app_state.get_font_scaling();
+                            }
+                        });
+                        self.app_state.set_font_scaling(font_scaling);
+                    }
                 });
 
                 ui.menu_button("Campaign", |ui| {

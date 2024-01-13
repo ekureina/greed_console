@@ -102,6 +102,11 @@ fn main() {
             } else {
                 AppState::new()
             };
+            cc.egui_ctx.style_mut(|style| {
+                for (_, font_id) in style.text_styles.iter_mut() {
+                    font_id.size *= app_state.get_font_scaling();
+                }
+            });
 
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
