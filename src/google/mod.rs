@@ -1,3 +1,5 @@
+use std::cell::OnceCell;
+
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 use crate::model::classes::{
     AndClassRequirement, Class, ClassCache, ClassPassive, ClassRequirement, ClassUtility,
@@ -5,13 +7,9 @@ use crate::model::classes::{
 };
 use crate::util::from_roman;
 
-use google_drive3::client::NoToken;
-use google_drive3::hyper::body::to_bytes;
-use google_drive3::hyper::client::HttpConnector;
-use google_drive3::hyper_rustls::HttpsConnector;
-use google_drive3::DriveHub;
-use google_drive3::{hyper, hyper_rustls};
+use chrono::{DateTime, Utc};
 use log::info;
+use serde::Deserialize;
 use thiserror::Error;
 
 /*
@@ -35,6 +33,7 @@ use thiserror::Error;
 static API_KEY: &str = env!("API_KEY");
 static GREED_RULES_DOC_ID: &str = "1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4";
 static RULES_EXPORT_FORMAT: &str = "text/plain";
+const REST_CLIENT: OnceCell<reqwest::Client> = OnceCell::new();
 
 #[allow(let_underscore_drop, clippy::too_many_lines)]
 fn get_class(
@@ -317,32 +316,17 @@ fn get_origin(
     }
 }
 
-fn get_hub() -> DriveHub<HttpsConnector<HttpConnector>> {
-    DriveHub::new(
-        hyper::Client::builder().build(
-            hyper_rustls::HttpsConnectorBuilder::new()
-                .with_native_roots()
-                .https_only()
-                .enable_http2()
-                .build(),
-        ),
-        NoToken,
-    )
-}
-
 async fn get_rules() -> Result<Vec<String>, GetOriginsAndClassesError> {
-    let content = String::from_utf8(
-        to_bytes(
-            get_hub()
-                .files()
-                .export(GREED_RULES_DOC_ID, RULES_EXPORT_FORMAT)
-                .param("key", API_KEY)
-                .doit()
-                .await?,
-        )
+    let content = REST_CLIENT
+        .get_or_init(|| reqwest::Client::new())
+        .get(format!(
+            "https://www.googleapis.com/drive/v3/files/{GREED_RULES_DOC_ID}/export"
+        ))
+        .query(&[("key", API_KEY), ("mimeType", RULES_EXPORT_FORMAT)])
+        .send()
         .await?
-        .to_vec(),
-    )?;
+        .text()
+        .await?;
 
     info!("Rules Document: {content}");
 
@@ -403,34 +387,34 @@ pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClasse
             .skip_while(|line| !line.contains('('))
             .next();
     }
-    Ok(ClassCache::new(origins, classes, get_update_time().await?))
+    Ok(ClassCache::new(
+        origins,
+        classes,
+        Some(get_update_time().await?),
+    ))
 }
 
-pub async fn get_update_time() -> Result<Option<i64>, GetUpdateTimeError> {
-    let hub = get_hub();
-
-    let timestamp = hub
-        .files()
-        .get("1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4")
-        .param("fields", "modifiedTime")
-        .param("key", API_KEY)
-        .doit()
+pub async fn get_update_time() -> Result<i64, GetUpdateTimeError> {
+    let timestamp = REST_CLIENT
+        .get_or_init(|| reqwest::Client::new())
+        .get(format!(
+            "https://www.googleapis.com/drive/v3/files/{GREED_RULES_DOC_ID}"
+        ))
+        .query(&[("key", API_KEY), ("fields", "modifiedTime")])
+        .send()
         .await?
-        .1
+        .json::<GetUpdateTimeResponse>()
+        .await?
         .modified_time
-        .map(|time| time.timestamp());
+        .timestamp();
     info!("New timestamp: {timestamp:?}");
     Ok(timestamp)
 }
 
 #[derive(Debug, Error)]
 pub enum GetOriginsAndClassesError {
-    #[error("Error in the Google Client: {0}")]
-    Google(#[from] google_drive3::Error),
-    #[error("Error parsing rules document: {0}")]
-    Parse(#[from] google_drive3::hyper::Error),
-    #[error("Error parsing rules document as utf8: {0}")]
-    Utf8Parse(#[from] std::string::FromUtf8Error),
+    #[error("Error in the Reqwest Client: {0}")]
+    Reqwest(#[from] reqwest::Error),
     #[error("The format of the rules doc has changed, please fix parsing")]
     FormatChange,
     #[error("Failed to parse class")]
@@ -443,6 +427,12 @@ pub enum GetOriginsAndClassesError {
 
 #[derive(Debug, Error)]
 pub enum GetUpdateTimeError {
-    #[error("Error in the Google Client: {0}")]
-    Google(#[from] google_drive3::Error),
+    #[error("Error in the Reqwest Client: {0}")]
+    Reqwest(#[from] reqwest::Error),
+}
+
+#[derive(Deserialize, Debug, Copy, Clone)]
+struct GetUpdateTimeResponse {
+    #[serde(rename = "modifiedTime")]
+    pub modified_time: DateTime<Utc>,
 }

@@ -113,7 +113,7 @@ fn main() {
                 let current_rules_update_time = rt.block_on(google::get_update_time());
                 match current_rules_update_time {
                     Ok(current_rules_update_time) => {
-                        if cache.get_cache_update_time() == current_rules_update_time {
+                        if cache.get_cache_update_time() == Some(current_rules_update_time) {
                             cache
                         } else if !app_state.skip_rules_update_confirmation() {
                             match MessageDialog::new()
