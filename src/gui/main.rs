@@ -45,7 +45,7 @@ use std::time::Duration;
 
 static COPYRIGHT_NOTICE: &str = "
 A console and digital character sheet for campaigns under the greed ruleset.
-Copyright (C) 2023 Claire Moore
+Copyright (C) 2023,2024 Claire Moore
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

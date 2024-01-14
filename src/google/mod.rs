@@ -318,7 +318,7 @@ fn get_origin(
 
 async fn get_rules() -> Result<Vec<String>, GetOriginsAndClassesError> {
     let content = REST_CLIENT
-        .get_or_init(|| reqwest::Client::new())
+        .get_or_init(reqwest::Client::new)
         .get(format!(
             "https://www.googleapis.com/drive/v3/files/{GREED_RULES_DOC_ID}/export"
         ))
@@ -396,7 +396,7 @@ pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClasse
 
 pub async fn get_update_time() -> Result<i64, GetUpdateTimeError> {
     let timestamp = REST_CLIENT
-        .get_or_init(|| reqwest::Client::new())
+        .get_or_init(reqwest::Client::new)
         .get(format!(
             "https://www.googleapis.com/drive/v3/files/{GREED_RULES_DOC_ID}"
         ))
