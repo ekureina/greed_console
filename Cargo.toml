@@ -3,7 +3,6 @@ name = "greed_console"
 version = "0.16.0"
 edition = "2021"
 authors = ["Claire Moore <kurennon@gmail.com>"]
-rust-version = "1.71"
 description = "A small GUI App to help with playing Greed"
 license = "GPL-3.0-or-later"
 publish = false
