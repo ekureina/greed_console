@@ -41,8 +41,7 @@ jobs:
           workload_identity_provider: projects/${{ secrets.GOOGLE_PROJECT_NUM }}/locations/global/workloadIdentityPools/${{ secrets.GOOGLE_WORKLOAD_IDENTITY_POOL }}/providers/${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
       - uses: google-github-actions/setup-gcloud@v2
         with:
-          version: '>= 363.0.0'
-          project_id: ${{ secrets.GOOGLE_PROJECT_ID }}
+          version: '>= 456.0.0'
       - run: gcloud services api-keys create --display-name="Greed Console API Key, ${{ github.ref_name }}:${{ matrix.build }}" --key-id "${{ github.ref_name}}-${{ matrix.build }}"--api-target=service=drive.googleapis.com
       - run: |
           echo "APP_KEY=$(gcloud services api-keys get-key-string projects/${{ secrets.GOOGLE_PROJECT_NUM }}/locations/global/keys/${{ github.ref_name }}-${{ matrix.build }} | sed -e 's/keyString: //g')" >> $GITHUB_ENV
