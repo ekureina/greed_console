@@ -41,7 +41,8 @@ jobs:
           version: '>= 363.0.0'
           project_id: ${{ secrets.GOOGLE_PROJECT_ID }}
       - run: gcloud services api-keys create --display-name="Greed Console API Key, ${{ github.ref_name }}:${{ matrix.build }}" --key-id "${{ github.ref_name}}-${{ matrix.build }}"--api-target=service=drive.googleapis.com
-      - run: echo "APP_KEY=$(gcloud services api-keys get-key-string projects/${{ secrets.GOOGLE_PROJECT_NUM }}/locations/global/keys/${{ github.ref_name }}-${{ matrix.build }} | sed -e 's/keyString: //g')" >> $GITHUB_ENV
+      - run: |
+          echo "APP_KEY=$(gcloud services api-keys get-key-string projects/${{ secrets.GOOGLE_PROJECT_NUM }}/locations/global/keys/${{ github.ref_name }}-${{ matrix.build }} | sed -e 's/keyString: //g')" >> $GITHUB_ENV
       - if: runner.os == 'Linux'
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
