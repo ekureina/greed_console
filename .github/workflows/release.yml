@@ -16,21 +16,26 @@ jobs:
       matrix:
         build: [x86_64-linux, x86_64-macos, aarch64-macos, x86_64-windows]
         include:
-        - asset_suffix: ""
         - build: x86_64-linux
           os: ubuntu-latest
           target: x86_64-unknown-linux-gnu
+          asset_suffix: ""
+          key_suffix: linux-amd64
         - build: x86_64-macos
           os: macos-latest
           target: x86_64-apple-darwin
+          asset_suffix: ""
+          key_suffix: macos-amd64
         - build: aarch64-macos
           os: macos-latest
           target: aarch64-apple-darwin
+          asset_suffix: ""
+          key_suffix: macos-arm64
         - build: x86_64-windows
           os: windows-latest
           target: x86_64-pc-windows-gnu
-        - os: windows-latest
           asset_suffix: .exe
+          key_suffix: windows-gnu-amd64
     name: release
     runs-on: ${{ matrix.os }}
     steps:
@@ -42,9 +47,9 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
         with:
           version: '>= 456.0.0'
-      - run: gcloud services api-keys create --display-name="Greed Console API Key, ${{ github.ref_name }}:${{ matrix.build }}" --key-id "${{ github.ref_name}}-${{ matrix.build }}"--api-target=service=drive.googleapis.com
+      - run: gcloud services api-keys create --display-name="Greed Console API Key, ${{ github.ref_name }}:${{ matrix.build }}" --key-id "${{ github.ref_name}}-${{ matrix.key_suffix }}"--api-target=service=drive.googleapis.com
       - run: |
-          echo "APP_KEY=$(gcloud services api-keys get-key-string projects/${{ secrets.GOOGLE_PROJECT_NUM }}/locations/global/keys/${{ github.ref_name }}-${{ matrix.build }} | sed -e 's/keyString: //g')" >> $GITHUB_ENV
+          echo "APP_KEY=$(gcloud services api-keys get-key-string projects/${{ secrets.GOOGLE_PROJECT_NUM }}/locations/global/keys/${{ github.ref_name }}-${{ matrix.key_suffix }} | sed -e 's/keyString: //g')" >> $GITHUB_ENV
       - if: runner.os == 'Linux'
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -55,5 +60,5 @@ jobs:
       - if: env.preview == 'false'
         uses: svenstaro/upload-release-action@v2
         with:
-          file: target/${{ matrix.target }}/release/*
+          file: target/${{ matrix.target }}/release/greed_console${{ matrix.asset_suffix }}
           asset_name: greed_console_$tag_${{ matrix.target }}${{ matrix.asset_suffix }}
