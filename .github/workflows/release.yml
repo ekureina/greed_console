@@ -56,6 +56,9 @@ jobs:
           packages: libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libgtk-3-dev
           version: 1.0
           execute_install_scripts: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
       - run: cargo build --all-features --release --target ${{ matrix.target }}
       - if: env.preview == 'false'
         uses: svenstaro/upload-release-action@v2
