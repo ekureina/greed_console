@@ -57,7 +57,7 @@ jobs:
             echo "Key Already Created"
           else
             gcloud services api-keys create --display-name="Greed Console API Key, ${{ github.ref_name }}:${{ matrix.build }}" --key-id "${{ github.ref_name}}-${{ matrix.key_suffix }}" --api-target=service=drive.googleapis.com
-          else
+          fi
           echo "APP_KEY=$(gcloud services api-keys get-key-string projects/${{ secrets.GOOGLE_PROJECT_NUM }}/locations/global/keys/${{ github.ref_name }}-${{ matrix.key_suffix }} | sed -e 's/keyString: //g')" >> $GITHUB_ENV
       - name: Get Linux Libraries
         if: runner.os == 'Linux'
