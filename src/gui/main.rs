@@ -10,6 +10,7 @@ use eframe::egui;
 use eframe::glow::Context;
 use eframe::Storage;
 use egui::emath::Numeric;
+use egui::TextStyle;
 use egui_dock::{DockState, Style};
 use egui_notify::Toasts;
 use log::info;
@@ -139,20 +140,36 @@ impl GuiGreedApp {
 
                 ui.menu_button("Settings", |ui| {
                     ui.checkbox(self.app_state.skip_rules_update_confirmation_mut(), "Skip Confirmation for rules update on start");
-                    let mut font_scaling = self.app_state.get_font_scaling();
+                        ui.label("Font Size:");
                     ui.horizontal(|ui| {
-                        ui.label("Font Scaling:");
-                        ui.add(egui::Slider::new(&mut font_scaling, 1.0..=5.0));
-                    });
-                    // Did the value meaninifully change?
-                    if (font_scaling - self.app_state.get_font_scaling()).abs() > f32::EPSILON {
-                        ctx.style_mut(|style| {
-                            for (_, font_id) in style.text_styles.iter_mut() {
-                                font_id.size *= font_scaling / self.app_state.get_font_scaling();
+                        if ui.button("+").clicked() {
+                            let old_size = self.app_state.get_font_size();
+                            if old_size < 128f32 {
+                                self.app_state.set_font_size(old_size + 1.0);
+                                ctx.style_mut(|style| {
+                                    for (style, font_id) in style.text_styles.iter_mut() {
+                                        if style == &TextStyle::Body || style == &TextStyle::Button {
+                                            font_id.size = old_size + 1.0;
+                                        }
+                                    }
+                                });
                             }
-                        });
-                        self.app_state.set_font_scaling(font_scaling);
-                    }
+                        }
+                        ui.label(self.app_state.get_font_size().to_string());
+                        if ui.button("-").clicked() {
+                            let old_size = self.app_state.get_font_size();
+                            if old_size > 1f32 {
+                                self.app_state.set_font_size(old_size - 1.0);
+                                ctx.style_mut(|style| {
+                                    for (style, font_id) in style.text_styles.iter_mut() {
+                                        if style == &TextStyle::Body || style == &TextStyle::Button {
+                                            font_id.size = old_size - 1.0;
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    });
                 });
 
                 ui.menu_button("Campaign", |ui| {

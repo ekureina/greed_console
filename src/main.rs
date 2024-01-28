@@ -26,6 +26,7 @@ use crate::gui::main::GuiGreedApp;
 
 use clap::Parser;
 use eframe::NativeOptions;
+use egui::TextStyle;
 use gui::state::AppState;
 use log::{error, info, warn, LevelFilter};
 use log4rs::{
@@ -113,8 +114,10 @@ fn main() {
                 AppState::new()
             };
             cc.egui_ctx.style_mut(|style| {
-                for (_, font_id) in style.text_styles.iter_mut() {
-                    font_id.size *= app_state.get_font_scaling();
+                for (style, font_id) in style.text_styles.iter_mut() {
+                    if style == &TextStyle::Body || style == &TextStyle::Button {
+                        font_id.size = app_state.get_font_size();
+                    }
                 }
             });
 

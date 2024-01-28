@@ -26,13 +26,12 @@ pub struct AppState {
     campaign_path_history: VecDeque<OsString>,
     #[serde(default)]
     skip_rules_update_confirmation: bool,
-    #[serde(default = "default_font_scaling")]
-    font_scaling: f32,
+    #[serde(default = "default_font_size")]
+    font_size: f32,
 }
 
-fn default_font_scaling() -> f32 {
-    // Roughly size 12 font
-    1.2
+fn default_font_size() -> f32 {
+    12f32
 }
 
 impl AppState {
@@ -76,12 +75,12 @@ impl AppState {
         &mut self.skip_rules_update_confirmation
     }
 
-    pub fn get_font_scaling(&self) -> f32 {
-        self.font_scaling
+    pub fn get_font_size(&self) -> f32 {
+        self.font_size
     }
 
-    pub fn set_font_scaling(&mut self, new_value: f32) {
-        self.font_scaling = new_value;
+    pub fn set_font_size(&mut self, new_value: f32) {
+        self.font_size = new_value;
     }
 }
 
