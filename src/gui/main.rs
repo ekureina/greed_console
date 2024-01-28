@@ -381,7 +381,7 @@ impl GuiGreedApp {
         #[cfg(any(target_os = "windows", target_os = "linux"))]
         let dialog = dialog
             .set_title("Save Campaign As")
-            .add_filter("Greed Campaign", &["ron"]);
+            .add_filter("Greed Campaign", &["ron", "gccs"]);
 
         dialog
             .save_file()
@@ -432,7 +432,7 @@ impl GuiGreedApp {
         #[cfg(any(target_os = "windows", target_os = "linux"))]
         let dialog = dialog
             .set_title("Open Campaign")
-            .add_filter("Greed Campaign", &["ron"]);
+            .add_filter("Greed Campaign", &["ron", "gccs"]);
 
         if let Some(picked_file) = dialog.pick_file() {
             self.open_new_save(&picked_file.into_os_string());
@@ -572,7 +572,7 @@ impl GuiGreedApp {
                                 #[cfg(any(target_os = "windows", target_os = "linux"))]
                                 let dialog = dialog
                                     .set_title("Save Campaign As")
-                                    .add_filter("Greed Campaign", &["ron"]);
+                                    .add_filter("Greed Campaign", &["ron", "gccs"]);
                                 if let Some(picked_file) = dialog.save_file() {
                                     campaign_gui.set_path(picked_file);
                                     if campaign_gui.save().is_some_and(|result| result.is_ok()) {
