@@ -26,7 +26,7 @@ use crate::gui::main::GuiGreedApp;
 
 use clap::Parser;
 use eframe::NativeOptions;
-use egui::TextStyle;
+use egui::{TextStyle, ViewportBuilder};
 use gui::state::AppState;
 use log::{error, info, warn, LevelFilter};
 use log4rs::{
@@ -93,14 +93,16 @@ fn main() {
     let args = Args::parse();
 
     let img_bytes = include_bytes!(concat!(env!("OUT_DIR"), "greed_console_icon")).to_vec();
-    let icon_data = eframe::IconData {
+    let icon_data = egui::IconData {
         rgba: img_bytes,
         width: env!("GREED_CONSOLE_ICON_WIDTH").parse().unwrap(),
         height: env!("GREED_CONSOLE_ICON_HEIGHT").parse().unwrap(),
     };
 
     let native_options = NativeOptions {
-        icon_data: Some(icon_data),
+        viewport: ViewportBuilder::default()
+            .with_title("Greed Console")
+            .with_icon(icon_data),
         ..Default::default()
     };
 

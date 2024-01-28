@@ -516,7 +516,9 @@ impl GuiGreedApp {
 
 impl eframe::App for GuiGreedApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        frame.set_window_title("Greed Console");
+        if ctx.input(|input| input.viewport().close_requested()) {
+            self.on_close_event(ctx);
+        }
 
         self.toasts.show(ctx);
 
@@ -540,7 +542,13 @@ impl eframe::App for GuiGreedApp {
         Duration::from_secs(60)
     }
 
-    fn on_close_event(&mut self) -> bool {
+    fn on_exit(&mut self, _gl: Option<&Context>) {
+        info!("App Shutting down!");
+    }
+}
+
+impl GuiGreedApp {
+    fn on_close_event(&mut self, ctx: &egui::Context) {
         let tabs_to_close = Rc::new(RefCell::new(Vec::new()));
         let tabs_to_close_clone = tabs_to_close.clone();
         let campaign_results =
@@ -601,10 +609,8 @@ impl eframe::App for GuiGreedApp {
 
         self.tab_viewer.set_tabs_to_close(&tabs_to_close.borrow());
 
-        campaign_results.is_empty() || !campaign_results.iter().any(|result| !result)
-    }
-
-    fn on_exit(&mut self, _gl: Option<&Context>) {
-        info!("App Shutting down!");
+        if !campaign_results.is_empty() && campaign_results.iter().any(|result| !result) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        }
     }
 }
