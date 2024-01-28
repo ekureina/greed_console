@@ -8,7 +8,7 @@ pub fn error_log_and_notify<M: Into<String>>(toasts_ref: &mut egui_notify::Toast
     toasts_ref
         .error(error)
         .set_closable(true)
-        .set_duration(Some(Duration::from_secs(20)));
+        .set_duration(Some(Duration::from_secs(5)));
 }
 
 pub fn info_log_and_notify<M: Into<String>>(toasts_ref: &mut egui_notify::Toasts, message: M) {
@@ -18,5 +18,5 @@ pub fn info_log_and_notify<M: Into<String>>(toasts_ref: &mut egui_notify::Toasts
     toasts_ref
         .info(info)
         .set_closable(true)
-        .set_duration(Some(Duration::from_secs(20)));
+        .set_duration(Some(Duration::from_secs(5)));
 }
