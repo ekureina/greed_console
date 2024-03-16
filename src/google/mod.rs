@@ -191,7 +191,7 @@ fn get_origin(
     first_line: &str,
     mut paragraphs: impl Iterator<Item = String>,
 ) -> Result<Class, GetOriginsAndClassesError> {
-    let origin_name = first_line.split_whitespace().collect::<Vec<&str>>()[0].to_string();
+    let origin_name = first_line.to_owned();
     if origin_name == "Human" {
         Ok(Class::new(
             String::from("Human"),
@@ -357,7 +357,10 @@ pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClasse
         if origin.clone().get_name() == "Human" {
             line = origin_lines
                 .by_ref()
-                .skip_while(|paragraph| !paragraph.starts_with("Dwarf"))
+                .skip_while(|paragraph| !paragraph.trim().is_empty())
+                .skip_while(|paragraph| paragraph.trim().is_empty())
+                .skip_while(|paragraph| paragraph.starts_with('_'))
+                .skip_while(|paragraph| paragraph.trim().is_empty())
                 .next();
         } else {
             line = origin_lines
