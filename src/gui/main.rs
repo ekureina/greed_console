@@ -147,7 +147,7 @@ impl GuiGreedApp {
                             if old_size < 128f32 {
                                 self.app_state.set_font_size(old_size + 1.0);
                                 ctx.style_mut(|style| {
-                                    for (style, font_id) in style.text_styles.iter_mut() {
+                                    for (style, font_id) in &mut style.text_styles {
                                         if style == &TextStyle::Body || style == &TextStyle::Button {
                                             font_id.size = old_size + 1.0;
                                         }
@@ -161,7 +161,7 @@ impl GuiGreedApp {
                             if old_size > 1f32 {
                                 self.app_state.set_font_size(old_size - 1.0);
                                 ctx.style_mut(|style| {
-                                    for (style, font_id) in style.text_styles.iter_mut() {
+                                    for (style, font_id) in &mut style.text_styles {
                                         if style == &TextStyle::Body || style == &TextStyle::Button {
                                             font_id.size = old_size - 1.0;
                                         }

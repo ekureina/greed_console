@@ -85,7 +85,7 @@ impl GameState {
     }
 
     /**
-     * Resets the GameState for the next battle
+     * Resets the `GameState` for the next battle
      */
     pub fn next_battle(&mut self) {
         self.next_round();
@@ -99,21 +99,21 @@ impl GameState {
     }
 
     /**
-     * Set GameState such that a primary action was used
+     * Set `GameState` such that a primary action was used
      */
     pub fn use_primary(&mut self) {
         self.primary_actions -= 1;
     }
 
     /**
-     * Set GameState such that a secondary action was used
+     * Set `GameState` such that a secondary action was used
      */
     pub fn use_secondary(&mut self) {
         self.secondary_actions -= 1;
     }
 
     /**
-     * Set GameState such that a special action was used
+     * Set `GameState` such that a special action was used
      */
     pub fn use_special<'a, S: Into<&'a str>>(&mut self, name: S) {
         let name_ref = name.into();
@@ -132,7 +132,7 @@ impl GameState {
     }
 
     /**
-     * Set GameState such that inspiration was used
+     * Set `GameState` such that inspiration was used
      */
     pub fn use_inspiration(&mut self) {
         self.inspiration_usable = false;

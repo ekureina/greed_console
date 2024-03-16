@@ -1,4 +1,4 @@
-use std::cell::OnceCell;
+use std::sync::OnceLock;
 
 use crate::model::actions::{PrimaryAction, SecondaryAction, SpecialAction};
 use crate::model::classes::{
@@ -33,7 +33,7 @@ use thiserror::Error;
 static API_KEY: &str = env!("API_KEY");
 static GREED_RULES_DOC_ID: &str = "1154Ep1n8AuiG5iQVxNmahIzjb69BQD28C3QmLfta1n4";
 static RULES_EXPORT_FORMAT: &str = "text/plain";
-const REST_CLIENT: OnceCell<reqwest::Client> = OnceCell::new();
+static REST_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
 #[allow(let_underscore_drop, clippy::too_many_lines)]
 fn get_class(

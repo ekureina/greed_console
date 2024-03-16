@@ -79,7 +79,7 @@ pub struct Class {
     primary_action: PrimaryAction,
     secondary_action: SecondaryAction,
     special_action: SpecialAction,
-    class_requirements: Option<Box<dyn ClassRequirement>>,
+    prerequisites: Option<Box<dyn ClassRequirement>>,
 }
 
 impl Class {
@@ -92,7 +92,7 @@ impl Class {
         primary_action: PrimaryAction,
         secondary_action: SecondaryAction,
         special_action: SpecialAction,
-        class_requirements: Option<Box<dyn ClassRequirement>>,
+        prerequisites: Option<Box<dyn ClassRequirement>>,
     ) -> Class {
         Class {
             name: name.into(),
@@ -102,7 +102,7 @@ impl Class {
             primary_action,
             secondary_action,
             special_action,
-            class_requirements,
+            prerequisites,
         }
     }
 
@@ -131,7 +131,7 @@ impl Class {
     }
 
     pub fn get_class_available(&self, current_classes: &[Class]) -> bool {
-        match &self.class_requirements {
+        match &self.prerequisites {
             Some(requirements) => requirements.meets_requirement(current_classes),
             None => true,
         }

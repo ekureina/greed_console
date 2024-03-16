@@ -116,7 +116,7 @@ fn main() {
                 AppState::new()
             };
             cc.egui_ctx.style_mut(|style| {
-                for (style, font_id) in style.text_styles.iter_mut() {
+                for (style, font_id) in &mut style.text_styles {
                     if style == &TextStyle::Body || style == &TextStyle::Button {
                         font_id.size = app_state.get_font_size();
                     }
