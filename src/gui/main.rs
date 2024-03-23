@@ -158,7 +158,7 @@ impl GuiGreedApp {
                         ui.label(self.app_state.get_font_size().to_string());
                         if ui.button("-").clicked() {
                             let old_size = self.app_state.get_font_size();
-                            if old_size > 1f32 {
+                            if old_size > 5f32 {
                                 self.app_state.set_font_size(old_size - 1.0);
                                 ctx.style_mut(|style| {
                                     for (style, font_id) in &mut style.text_styles {

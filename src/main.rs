@@ -110,18 +110,24 @@ fn main() {
         "Greed Console",
         native_options,
         Box::new(move |cc| {
-            let app_state = if let Some(storage) = cc.storage {
+            let mut app_state = if let Some(storage) = cc.storage {
                 eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
             } else {
                 AppState::new()
             };
-            cc.egui_ctx.style_mut(|style| {
-                for (style, font_id) in &mut style.text_styles {
-                    if style == &TextStyle::Body || style == &TextStyle::Button {
-                        font_id.size = app_state.get_font_size();
+            let starting_font_size = app_state.get_font_size();
+            if starting_font_size > 0.0 {
+                cc.egui_ctx.style_mut(|style| {
+                    for (style, font_id) in &mut style.text_styles {
+                        if style == &TextStyle::Body || style == &TextStyle::Button {
+                            font_id.size = app_state.get_font_size();
+                        }
                     }
-                }
-            });
+                });
+            } else {
+                error!("Unable to set starting font size, attempted to use {starting_font_size} as the starting font size. Inverting the sign of the font size.");
+                app_state.set_font_size(-starting_font_size);
+            }
 
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
