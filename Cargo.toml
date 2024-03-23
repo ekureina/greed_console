@@ -1,6 +1,6 @@
 [package]
 name = "greed_console"
-version = "0.18.0"
+version = "0.18.1"
 edition = "2021"
 authors = ["Claire Moore <kurennon@gmail.com>"]
 description = "A small GUI App to help with playing Greed"

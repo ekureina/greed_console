@@ -22,22 +22,22 @@ jobs:
           os: ubuntu-latest
           target: x86_64-unknown-linux-gnu
           asset_suffix: ""
-          key_suffix: linux-amd64
+          key_prefix: linux-amd64
         - build: x86_64-macos
           os: macos-latest
           target: x86_64-apple-darwin
           asset_suffix: ""
-          key_suffix: macos-amd64
+          key_prefix: macos-amd64
         - build: aarch64-macos
           os: macos-latest
           target: aarch64-apple-darwin
           asset_suffix: ""
-          key_suffix: macos-arm64
+          key_prefix: macos-arm64
         - build: x86_64-windows
           os: windows-latest
           target: x86_64-pc-windows-gnu
           asset_suffix: .exe
-          key_suffix: windows-gnu-amd64
+          key_prefix: windows-gnu-amd64
     name: release
     runs-on: ${{ matrix.os }}
     steps:
@@ -55,10 +55,13 @@ jobs:
       - name: Get or Create API Key
         shell: bash
         run: |
-          (gcloud services api-keys describe ${{ github.ref_name }}-${{ matrix.key_suffix }} >/dev/null 2>&1 \
-            && echo "Key Already Created") \
-            || gcloud services api-keys create --display-name="Greed Console API Key, ${{ github.ref_name }}:${{ matrix.build }}" --key-id "${{ github.ref_name}}-${{ matrix.key_suffix }}" --api-target=service=drive.googleapis.com >/dev/null 2>&1
-          echo "API_KEY=$(gcloud services api-keys get-key-string projects/${{ secrets.GOOGLE_PROJECT_NUM }}/locations/global/keys/${{ github.ref_name }}-${{ matrix.key_suffix }} | sed -e 's/keyString: //g')" >> $GITHUB_ENV
+          export API_KEY_NAME=$(echo "${{ matrix.key_prefix }}-${{ github.ref_name }}" | sed -e 's/[.]\-\g')
+          if gcloud services api-keys describe $API_KEY_NAME >/dev/null 2>&1; then
+            echo "Key Already Created"
+          else
+            gcloud services api-keys create --display-name="Greed Console API Key, ${{ github.ref_name }}:${{ matrix.build }}" --key-id $API_KEY_NAME --api-target=service=drive.googleapis.com >/dev/null 2>&1
+          fi
+          echo "API_KEY=$(gcloud services api-keys get-key-string projects/${{ secrets.GOOGLE_PROJECT_NUM }}/locations/global/keys/$API_KEY_NAME | sed -e 's/keyString: //g')" >> $GITHUB_ENV
       - name: Get Linux Libraries
         if: runner.os == 'Linux'
         uses: awalsh128/cache-apt-pkgs-action@latest
