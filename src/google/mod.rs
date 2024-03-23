@@ -379,7 +379,10 @@ pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClasse
     line = class_lines.by_ref().next();
 
     let mut classes = Vec::<Class>::new();
-    while line.is_some() {
+    while line
+        .as_ref()
+        .is_some_and(|line| !line.contains("Idea Bank"))
+    {
         let class = get_class(
             &line.ok_or(GetOriginsAndClassesError::FormatChange)?,
             class_lines.by_ref(),
@@ -387,7 +390,7 @@ pub async fn get_origins_and_classes() -> Result<ClassCache, GetOriginsAndClasse
         classes.push(class);
         line = class_lines
             .by_ref()
-            .skip_while(|line| !line.contains('('))
+            .skip_while(|line| !line.contains('(') && !line.contains("Idea Bank"))
             .next();
     }
     Ok(ClassCache::new(
