@@ -1871,7 +1871,7 @@ dependencies = [
 
 [[package]]
 name = "greed_console"
-version = "0.18.1"
+version = "0.18.2"
 dependencies = [
  "chrono",
  "clap",

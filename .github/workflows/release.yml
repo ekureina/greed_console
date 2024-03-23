@@ -55,7 +55,7 @@ jobs:
       - name: Get or Create API Key
         shell: bash
         run: |
-          export API_KEY_NAME=$(echo "${{ matrix.key_prefix }}-${{ github.ref_name }}" | sed -e 's/[.]\-\g')
+          export API_KEY_NAME=$(echo "${{ matrix.key_prefix }}-${{ github.ref_name }}" | sed -e 's|\.|_|g')
           if gcloud services api-keys describe $API_KEY_NAME >/dev/null 2>&1; then
             echo "Key Already Created"
           else
