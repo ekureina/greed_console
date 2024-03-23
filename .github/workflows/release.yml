@@ -12,7 +12,7 @@ jobs:
     env:
       API_KEY:
     permissions:
-      contents: 'read'
+      contents: 'write'
       id-token: 'write'
     strategy:
       matrix:
