@@ -46,11 +46,12 @@ mod model;
 mod util;
 
 fn main() {
+    let log_dir = eframe::storage_dir("Greed Console").unwrap();
     let appender = RollingFileAppender::builder()
         .rotation(Rotation::DAILY)
         .filename_prefix("app.log")
         .max_log_files(2)
-        .build(eframe::storage_dir("Greed Console").unwrap())
+        .build(log_dir.clone())
         .unwrap();
     let (non_blocking_file, _file_guard) = tracing_appender::non_blocking(appender);
     let env_filter = tracing_subscriber::EnvFilter::builder()
@@ -61,6 +62,12 @@ fn main() {
         .with_env_filter(env_filter)
         .with_writer(non_blocking_file)
         .init();
+
+    let old_log_path = log_dir.to_owned().join("app.log");
+    if old_log_path.exists() {
+        info!("Removing old log path '{old_log_path:?}!");
+        std::fs::remove_file(old_log_path).unwrap();
+    }
 
     if update_app() {
         let executable_name = current_exe().unwrap();
