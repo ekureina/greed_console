@@ -13,12 +13,12 @@ use egui::emath::Numeric;
 use egui::TextStyle;
 use egui_dock::{DockState, Style};
 use egui_notify::Toasts;
-use log::info;
 use rfd::{FileDialog, MessageDialog, MessageDialogResult};
 use self_update::cargo_crate_version;
 use tokio::join;
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
+use tracing::info;
 
 use std::cell::RefCell;
 use std::collections::HashSet;

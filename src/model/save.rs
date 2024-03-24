@@ -1,4 +1,3 @@
-use log::error;
 use ron::{from_str, to_string};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -8,6 +7,7 @@ use std::io::{Read, Write};
 use std::num::Wrapping;
 use std::path::Path;
 use thiserror::Error;
+use tracing::error;
 
 use super::sheets::Character;
 

@@ -1,6 +1,6 @@
 use super::actions::SpecialAction;
 
-use log::info;
+use tracing::info;
 
 use std::fmt::{self, Formatter, Result};
 

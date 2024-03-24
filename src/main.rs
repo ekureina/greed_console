@@ -28,26 +28,16 @@ use clap::Parser;
 use eframe::NativeOptions;
 use egui::{TextStyle, ViewportBuilder};
 use gui::state::AppState;
-use log::{error, info, warn, LevelFilter};
-use log4rs::{
-    append::rolling_file::{
-        policy::compound::{
-            roll::delete::DeleteRoller, trigger::size::SizeTrigger, CompoundPolicy,
-        },
-        RollingFileAppender,
-    },
-    config::{Appender, Root},
-    Config,
-};
 use model::classes::ClassCache;
 use rfd::{MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use self_update::cargo_crate_version;
 use std::{
     env::{args_os, current_exe},
-    path::Path,
     process::Command,
 };
 use tokio::runtime::Runtime;
+use tracing::{error, info, warn, Level};
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
 
 mod cli;
 mod google;
@@ -56,29 +46,21 @@ mod model;
 mod util;
 
 fn main() {
-    let file_logger = RollingFileAppender::builder()
-        .build(
-            Path::new(&eframe::storage_dir("Greed Console").unwrap())
-                .join("app.log")
-                .to_str()
-                .unwrap(),
-            Box::new(CompoundPolicy::new(
-                Box::new(SizeTrigger::new(10 * 1024 * 1024)),
-                Box::new(DeleteRoller::new()),
-            )),
-        )
+    let appender = RollingFileAppender::builder()
+        .rotation(Rotation::DAILY)
+        .filename_prefix("app.log")
+        .max_log_files(2)
+        .build(eframe::storage_dir("Greed Console").unwrap())
         .unwrap();
-
-    let config = Config::builder()
-        .appender(Appender::builder().build("file_logger", Box::new(file_logger)))
-        .build(
-            Root::builder()
-                .appender("file_logger")
-                .build(LevelFilter::Info),
-        )
-        .unwrap();
-
-    log4rs::init_config(config).unwrap();
+    let (non_blocking_file, _file_guard) = tracing_appender::non_blocking(appender);
+    let env_filter = tracing_subscriber::EnvFilter::builder()
+        .with_default_directive(Level::INFO.into())
+        .from_env_lossy();
+    tracing_subscriber::fmt()
+        .with_ansi(false)
+        .with_env_filter(env_filter)
+        .with_writer(non_blocking_file)
+        .init();
 
     if update_app() {
         let executable_name = current_exe().unwrap();

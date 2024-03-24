@@ -1,6 +1,6 @@
 use std::{cell::RefCell, ffi::OsString, path::Path, rc::Rc};
 
-use log::info;
+use tracing::info;
 
 use crate::model::{
     actions::{PrimaryAction, SecondaryAction},

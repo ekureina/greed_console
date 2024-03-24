@@ -8,9 +8,9 @@ use crate::model::classes::{
 use crate::util::from_roman;
 
 use chrono::{DateTime, Utc};
-use log::info;
 use serde::Deserialize;
 use thiserror::Error;
+use tracing::{info, instrument};
 
 /*
  * A console and digital character sheet for campaigns under the greed ruleset.
@@ -36,9 +36,10 @@ static RULES_EXPORT_FORMAT: &str = "text/plain";
 static REST_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
 #[allow(let_underscore_drop, clippy::too_many_lines)]
+#[instrument]
 fn get_class(
     first_line: &str,
-    mut paragraphs: impl Iterator<Item = String>,
+    mut paragraphs: impl Iterator<Item = String> + std::fmt::Debug,
 ) -> Result<Class, GetOriginsAndClassesError> {
     let class_components = first_line.split('(').collect::<Vec<&str>>();
     let class_name = class_components[0].trim().to_owned();

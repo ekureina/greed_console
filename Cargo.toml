@@ -1,6 +1,6 @@
 [package]
 name = "greed_console"
-version = "0.19.0"
+version = "0.20.0"
 edition = "2021"
 authors = ["Claire Moore <kurennon@gmail.com>"]
 description = "A small GUI App to help with playing Greed"
@@ -17,8 +17,6 @@ egui_dock = "0.11.4"
 egui-notify = "0.13.0"
 fastrand = "2.0.1"
 indexmap = { version = "2.2.5", features = ["serde"] }
-log = "0.4.21"
-log4rs = { version = "1.3.0", features = ["background_rotation"] }
 rfd = "0.14.0"
 ron = "0.8"
 serde = { version = "1.0", features = ["derive"] }
@@ -29,6 +27,9 @@ self_update = { version = "0.39.0", features = ["rustls"] }
 webbrowser = "0.8.13"
 reqwest = "0.11.26"
 chrono = { version = "0.4.35", features = ["serde"] }
+tracing-appender = "0.2.3"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [build-dependencies]
 nsvg = "0.5.1"

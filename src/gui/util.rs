@@ -1,5 +1,5 @@
-use log::{error, info};
 use std::time::Duration;
+use tracing::{error, info};
 
 pub fn error_log_and_notify<M: Into<String>>(toasts_ref: &mut egui_notify::Toasts, message: M) {
     let error = message.into();
